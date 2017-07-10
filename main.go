@@ -3,11 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	"github.com/golang/glog"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -61,4 +67,34 @@ func main() {
 	for index := 0; index < len(nodes.Items); index++ {
 		fmt.Println(nodes.Items[index].Name)
 	}
+
+	azureResourceWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "pods", api.NamespaceAll, fields.Everything())
+	resyncPeriod := 10 * time.Second
+	eStore, eController := cache.NewInformer(azureResourceWatch, &v1.Pod{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
+		AddFunc:    resourceCreated,
+		DeleteFunc: resourceDeleted,
+	})
+
+	//Run the controller as a goroutine
+	go eController.Run(wait.NeverStop)
+
+	for !eController.HasSynced() {
+		fmt.Println("Waiting for sync")
+		time.Sleep(15 * time.Second)
+	}
+
+	resources := eStore.List()
+	for index := 0; index < len(resources); index++ {
+		obj := resources[index]
+		resource := obj.(*v1.Pod)
+		fmt.Println(resource.Name)
+	}
+}
+
+func resourceCreated(a interface{}) {
+
+}
+
+func resourceDeleted(a interface{}) {
+
 }
