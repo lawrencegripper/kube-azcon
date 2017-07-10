@@ -8,10 +8,11 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/lawrencegripper/kube-azureresources/crd"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,7 +58,7 @@ func main() {
 		glog.Fatalf("Failed to create kubernetes client: %v", err)
 	}
 
-	nodes, err := client.Nodes().List(metav1.ListOptions{})
+	nodes, err := client.Nodes().List(v1.ListOptions{})
 
 	if err != nil {
 		glog.Fatalf("Failed to retreive nodes: %v", err)

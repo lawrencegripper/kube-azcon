@@ -1,19 +1,19 @@
 package crd
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
-func (v *AzureResource) GetObjectKind() schema.ObjectKind {
-	return schema.EmptyObjectKind
+func (v *AzureResource) GetObjectKind() unversioned.ObjectKind {
+	return unversioned.EmptyObjectKind
 }
 
 type AzureResource struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
-	Spec              AzureResourceSpec   `json:"spec"`
-	Status            AzureResourceStatus `json:"status,omitempty"`
+	v1.TypeMeta   `json:",inline"`
+	v1.ObjectMeta `json:"metadata"`
+	Spec          AzureResourceSpec   `json:"spec"`
+	Status        AzureResourceStatus `json:"status,omitempty"`
 }
 
 type AzureResourceSpec struct {
