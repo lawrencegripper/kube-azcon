@@ -2,21 +2,13 @@ package main
 
 import (
 	"flag"
-	"time"
-
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/lawrencegripper/kube-azureresources/crd"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/api"
 )
 
 func GetClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -27,6 +19,7 @@ func GetClientConfig(kubeconfig string) (*rest.Config, error) {
 }
 
 func main() {
+	fmt.Println("hello world")
 
 	// When running as a pod in-cluster, a kubeconfig is not needed. Instead this will make use of the service account injected into the pod.
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
@@ -58,7 +51,7 @@ func main() {
 		glog.Fatalf("Failed to create kubernetes client: %v", err)
 	}
 
-	nodes, err := client.Nodes().List(v1.ListOptions{})
+	nodes, err := client.Nodes().List(meta_v1.ListOptions{})
 
 	if err != nil {
 		glog.Fatalf("Failed to retreive nodes: %v", err)
@@ -68,35 +61,4 @@ func main() {
 	for index := 0; index < len(nodes.Items); index++ {
 		fmt.Println(nodes.Items[index].Name)
 	}
-
-	azureResourceWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "azureresources", api.NamespaceAll, fields.Everything())
-	resyncPeriod := 10 * time.Second
-	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
-		AddFunc:    resourceCreated,
-		DeleteFunc: resourceDeleted,
-	})
-
-	//Run the controller as a goroutine
-	go eController.Run(wait.NeverStop)
-
-	for !eController.HasSynced() {
-		fmt.Println("Waiting for sync")
-		time.Sleep(15 * time.Second)
-	}
-
-	resources := eStore.List()
-	for index := 0; index < len(resources); index++ {
-		obj := resources[0]
-		resource := obj.(*crd.AzureResource)
-		fmt.Println(resource.Name)
-	}
-	//return eStore
-}
-
-func resourceCreated(a interface{}) {
-
-}
-
-func resourceDeleted(a interface{}) {
-
 }
