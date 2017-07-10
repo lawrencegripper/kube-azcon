@@ -1,17 +1,13 @@
 package crd
 
 import (
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func (v *AzureResource) GetObjectKind() schema.ObjectKind {
 	return schema.EmptyObjectKind
 }
-
-// func (v *AzureResource) GetObjectKind() schema.ObjectKind {
-// 	return schema.EmptyObjectKind
-// }
 
 type AzureResource struct {
 	v1.TypeMeta   `json:",inline"`
