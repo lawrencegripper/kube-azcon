@@ -9,8 +9,8 @@ Aim:
 
 Build
 
-Install go dep 
-dep restore
+install glide
+glide up -v (strips nested vendor files)
 go build
 
 Cluster install

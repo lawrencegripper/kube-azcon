@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -89,7 +88,7 @@ func main() {
 	resources := eStore.List()
 	for index := 0; index < len(resources); index++ {
 		obj := resources[index]
-		resource := obj.(*v1.Pod)
+		resource := obj.(*crd.AzureResource)
 		fmt.Println(resource.Name)
 	}
 }
