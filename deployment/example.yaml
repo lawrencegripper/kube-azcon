@@ -6,7 +6,7 @@ spec:
   resourceProvider: azuresql
   type: postgresql
   sku: basic 
-  location: northeurope
+  location: westeurope3
   serviceName: postgresql2
   username: thing
   password: examplepw

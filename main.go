@@ -80,7 +80,7 @@ func main() {
 	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
 		DeleteFunc: resourceDeleted,
-		UpdateFunc: resourceUpdated
+		UpdateFunc: resourceUpdated,
 	})
 
 	//Run the controller as a goroutine
@@ -117,8 +117,8 @@ func resourceDeleted(a interface{}) {
 }
 
 
-func resourceUpdated(a interface{}) {
-	resource := a.(*crd.AzureResource)
+func resourceUpdated(oldItem, newItem interface{}) {
+	resource := oldItem.(*crd.AzureResource)
 
 	fmt.Println("Item Updated")
 	fmt.Printf("Name: %v \n", resource.Name)
