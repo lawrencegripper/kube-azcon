@@ -1,10 +1,6 @@
-hash: 0ca2d0b9b26d611e9bac2136a93814d39eb5bbd4ecc07752aa068393bea9895f
-updated: 2017-07-06T14:23:36.93482247+01:00
+hash: acf506a5cab361db6f988029bd80c64a700d80d682860dc6fefb8c1326aa3b37
+updated: 2017-07-07T16:51:30.930412028+01:00
 imports:
-- name: github.com/aaronlevy/kube-controller-demo
-  version: b1ef16ef4d572ea4496502d0520c64e2565e068f
-  subpackages:
-  - common
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
@@ -67,8 +63,6 @@ imports:
 - name: golang.org/x/net
   version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
-  - context
-  - context/ctxhttp
   - http2
   - http2/hpack
   - idna
@@ -97,7 +91,6 @@ imports:
 - name: k8s.io/apimachinery
   version: 75b8dd260ef0469d96d578705a87cffd0e09dab8
   subpackages:
-  - pkg/api/equality
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
@@ -124,22 +117,18 @@ imports:
   - pkg/util/diff
   - pkg/util/errors
   - pkg/util/framer
-  - pkg/util/httpstream
   - pkg/util/intstr
   - pkg/util/json
-  - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/rand
   - pkg/util/runtime
   - pkg/util/sets
-  - pkg/util/strategicpatch
   - pkg/util/validation
   - pkg/util/validation/field
   - pkg/util/wait
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
-  - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
   version: 3627aeb7d4f6ade38f995d2c923e459146493c7e
@@ -213,6 +202,7 @@ imports:
   - rest
   - rest/watch
   - tools/auth
+  - tools/cache
   - tools/clientcmd
   - tools/clientcmd/api
   - tools/clientcmd/api/latest
@@ -224,4 +214,8 @@ imports:
   - util/flowcontrol
   - util/homedir
   - util/integer
+- name: k8s.io/kubernetes
+  version: 227f52e0cb142f5658598e3c981e0e637f8d9c08
+  subpackages:
+  - pkg/api
 testImports: []

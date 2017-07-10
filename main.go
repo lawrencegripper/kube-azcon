@@ -2,14 +2,20 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/lawrencegripper/kube-azureresources/crd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 func GetClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -20,6 +26,7 @@ func GetClientConfig(kubeconfig string) (*rest.Config, error) {
 }
 
 func main() {
+
 	// When running as a pod in-cluster, a kubeconfig is not needed. Instead this will make use of the service account injected into the pod.
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
 	kubeconfig := flag.String("kubeconfig", "/Users/lawrence/.kube/config.d/sharedcluster.json", "Path to a kubeconfig file")
@@ -56,5 +63,39 @@ func main() {
 		glog.Fatalf("Failed to retreive nodes: %v", err)
 	}
 
-	fmt.Print(nodes.Items[0].Name)
+	fmt.Println("Nodes:")
+	for index := 0; index < len(nodes.Items); index++ {
+		fmt.Println(nodes.Items[index].Name)
+	}
+
+	azureResourceWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "azureresources", api.NamespaceAll, fields.Everything())
+	resyncPeriod := 10 * time.Second
+	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
+		AddFunc:    resourceCreated,
+		DeleteFunc: resourceDeleted,
+	})
+
+	//Run the controller as a goroutine
+	go eController.Run(wait.NeverStop)
+
+	for !eController.HasSynced() {
+		fmt.Println("Waiting for sync")
+		time.Sleep(15 * time.Second)
+	}
+
+	resources := eStore.List()
+	for index := 0; index < len(resources); index++ {
+		obj := resources[0]
+		resource := obj.(*crd.AzureResource)
+		fmt.Println(resource.Name)
+	}
+	//return eStore
+}
+
+func resourceCreated(a interface{}) {
+
+}
+
+func resourceDeleted(a interface{}) {
+
 }

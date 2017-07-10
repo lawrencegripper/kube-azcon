@@ -4,6 +4,6 @@
     "version": "0.1.0",
     "command": "go",
     "isShellCommand": true,
-    "args": ["build", "."],
+    "args": ["build"],
     "showOutput": "always"
 }
