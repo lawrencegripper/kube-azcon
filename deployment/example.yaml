@@ -1,12 +1,12 @@
 apiVersion: "stable.gripdev.xyz/v1"
 kind: AzureResource
 metadata:
-  name: postgresql1
+  name: postgresql2
 spec:
   resourceProvider: azuresql
   type: postgresql
   sku: basic 
   location: northeurope
-  serviceName: postgresql1
+  serviceName: postgresql2
   username: thing
   password: examplepw

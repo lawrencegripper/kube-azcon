@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"os"
+
 	"github.com/golang/glog"
+	"github.com/lawrencegripper/kube-azureresources/crd"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -14,7 +17,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"github.com/lawrencegripper/kube-azureresources/crd"
 )
 
 func GetClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -25,6 +27,9 @@ func GetClientConfig(kubeconfig string) (*rest.Config, error) {
 }
 
 func main() {
+
+	exitChannel := make(chan int)
+
 	fmt.Println("hello world")
 
 	// When running as a pod in-cluster, a kubeconfig is not needed. Instead this will make use of the service account injected into the pod.
@@ -75,6 +80,7 @@ func main() {
 	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
 		DeleteFunc: resourceDeleted,
+		UpdateFunc: resourceUpdated
 	})
 
 	//Run the controller as a goroutine
@@ -82,7 +88,7 @@ func main() {
 
 	for !eController.HasSynced() {
 		fmt.Println("Waiting for sync")
-		time.Sleep(15 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 	resources := eStore.List()
@@ -91,12 +97,31 @@ func main() {
 		resource := obj.(*crd.AzureResource)
 		fmt.Println(resource.Name)
 	}
+
+	exitCode := <-exitChannel
+	os.Exit(exitCode)
 }
 
 func resourceCreated(a interface{}) {
+	resource := a.(*crd.AzureResource)
 
+	fmt.Println("Item created")
+	fmt.Printf("Name: %v \n", resource.Name)
 }
 
 func resourceDeleted(a interface{}) {
+	resource := a.(*crd.AzureResource)
 
+	fmt.Println("Item deleted")
+	fmt.Printf("Name: %v \n", resource.Name)
 }
+
+
+func resourceUpdated(a interface{}) {
+	resource := a.(*crd.AzureResource)
+
+	fmt.Println("Item Updated")
+	fmt.Printf("Name: %v \n", resource.Name)
+}
+
+
