@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"github.com/lawrencegripper/kube-azureresources/crd"
 )
 
 func GetClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -68,9 +69,11 @@ func main() {
 		fmt.Println(nodes.Items[index].Name)
 	}
 
-	azureResourceWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "pods", api.NamespaceAll, fields.Everything())
+	clientCustom, _, _ := crd.NewClient(clientConfig)
+
+	azureResourceWatch := cache.NewListWatchFromClient(clientCustom, "azureresources", api.NamespaceAll, fields.Everything())
 	resyncPeriod := 10 * time.Second
-	eStore, eController := cache.NewInformer(azureResourceWatch, &v1.Pod{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
+	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
 		DeleteFunc: resourceDeleted,
 	})

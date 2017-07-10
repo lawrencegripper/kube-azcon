@@ -9,6 +9,12 @@ func (v *AzureResource) GetObjectKind() schema.ObjectKind {
 	return schema.EmptyObjectKind
 }
 
+type AzureResourceList struct {
+	v1.TypeMeta `json:",inline"`
+	v1.ListMeta `json:"metadata"`
+	Items           []AzureResource `json:"items"`
+}
+
 type AzureResource struct {
 	v1.TypeMeta   `json:",inline"`
 	v1.ObjectMeta `json:"metadata"`
