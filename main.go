@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func GetClientConfig(kubeconfig string) (*rest.Config, error) {
+func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	if kubeconfig != "" {
 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
 	}
@@ -51,7 +51,7 @@ func main() {
 
 	// Build the client config - optionally using a provided kubeconfig file.
 
-	clientConfig, err := GetClientConfig(*kubeconfig)
+	clientConfig, err := getClientConfig(*kubeconfig)
 	if err != nil {
 		glog.Fatalf("Failed to load client config: %v", err)
 	}

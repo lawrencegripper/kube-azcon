@@ -2,3 +2,15 @@ package: github.com/lawrencegripper/kube-azureresources # e.g. github.com/foo/ba
 import:
 - package: k8s.io/client-go
   version: v3.0.0-beta.0
+- package: github.com/Azure/azure-sdk-for-go
+  version: v10.1.0-beta
+  subpackages: 
+  - management
+  - arm
+- package: github.com/Azure/go-autorest
+  version: ~8.1.0
+  subpackages:
+  - /autorest
+  - autorest/azure
+  - autorest/date
+  - autorest/to
