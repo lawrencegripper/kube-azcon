@@ -22,7 +22,7 @@ func newServicePrincipalTokenFromCredentials(c azureProviders.ARMConfig, scope s
 	return adal.NewServicePrincipalToken(*oauthConfig, c.ClientID, c.ClientSecret, scope)
 }
 
-func deploy(serverName, databaseName, location string) {
+func Deploy(serverName, databaseName, location string) (string, error) {
 	c, err := azureProviders.GetConfigFromEnv()
 
 	if err != nil {
@@ -62,4 +62,6 @@ func deploy(serverName, databaseName, location string) {
 	// sqlClient.CreateOrUpdate(c.ResourceGroup, serverName, databaseName)
 
 	// sqlClient.Get(os.Getenv("AZURE_RESOURCE_GROUP"), )
+
+	return "hello", nil
 }

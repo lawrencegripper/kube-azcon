@@ -112,10 +112,13 @@ func resourceCreated(a interface{}) {
 func resourceDeleted(a interface{}) {
 	resource := a.(*crd.AzureResource)
 
+	// if resource.Spec.ResourceProvider == "azuresql" {
+	// 	result, err := sql.Deploy("","","")
+	// }
+
 	fmt.Println("Item deleted")
 	fmt.Printf("Name: %v \n", resource.Name)
 }
-
 
 func resourceUpdated(oldItem, newItem interface{}) {
 	resource := oldItem.(*crd.AzureResource)
@@ -123,5 +126,3 @@ func resourceUpdated(oldItem, newItem interface{}) {
 	fmt.Println("Item Updated")
 	fmt.Printf("Name: %v \n", resource.Name)
 }
-
-

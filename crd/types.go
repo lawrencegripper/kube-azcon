@@ -23,8 +23,8 @@ type AzureResource struct {
 }
 
 type AzureResourceSpec struct {
-	resourceProvider string
-	location         string
+	ResourceProvider string	`json:"resourceProvider"`
+	Location         string	`json:"location"`
 }
 
 type AzureResourceStatus struct {

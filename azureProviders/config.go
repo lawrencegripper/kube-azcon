@@ -23,10 +23,10 @@ type ConfigError struct {
 func (e *ConfigError) Error() string {
 	configJSON, err := json.Marshal(e.CurrentConfig)
 	if err != nil {
-		return e.ErrorDetails + ": " + string(configJSON)
+		return e.ErrorDetails
 	}
 
-	return e.ErrorDetails
+	return e.ErrorDetails + ": " + string(configJSON)
 }
 
 // GetConfigFromEnv - Retreives the azure configuration from environment variables.
