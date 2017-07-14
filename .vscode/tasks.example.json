@@ -1,0 +1,18 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "0.1.0",
+    "command": "go",
+    "isShellCommand": true,
+    "args": ["build"],
+    "showOutput": "never",
+    "options": {
+        "env": {
+            "AZURE_CLIENT_ID": "5kjhkjg",
+            "AZURE_CLIENT_SECRET": "lkghlkg6",
+            "AZURE_RESOURCE_GROUP": "asdfasdf",
+            "AZURE_SUBSCRIPTION_ID": "adadafd",
+            "AZURE_TENANT_ID": "asdfasdf"
+        }
+    }
+}
