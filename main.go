@@ -17,6 +17,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"github.com/lawrencegripper/kube-azureresources/azureProviders"
+	"github.com/lawrencegripper/kube-azureresources/azureProviders/sql"
 )
 
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -26,8 +28,17 @@ func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
-func main() {
+func init() {
+	// We log to stderr because glog will default to logging to a file.
+	// By setting this debugging is easier via `kubectl logs`
+	flag.Set("logtostderr", "true")
+	flag.Set("stderrthreshold", "INFO")
+	flag.Parse()
+}
 
+func main() {
+	defer glog.Flush()
+	
 	exitChannel := make(chan int)
 
 	fmt.Println("hello world")
@@ -36,10 +47,9 @@ func main() {
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
 	kubeconfig := flag.String("kubeconfig", "/Users/lawrence/.kube/config.d/sharedcluster.json", "Path to a kubeconfig file")
 
-	// We log to stderr because glog will default to logging to a file.
-	// By setting this debugging is easier via `kubectl logs`
-	flag.Set("logtostderr", "true")
-	flag.Parse()
+
+
+	glog.Info("Starting up....")
 
 	// nodeNameEnv := "Barry"
 	// // The node name is necessary so we can identify "self".
@@ -105,6 +115,20 @@ func main() {
 func resourceCreated(a interface{}) {
 	resource := a.(*crd.AzureResource)
 
+	azCon, err := azureProviders.GetConfigFromEnv()
+
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	var resourcePrefix = "bob"
+	depCon := sql.NewPostgresConfig(resourcePrefix+"testserver", resourcePrefix+"testdb", "westeurope")
+
+	result, err := sql.Deploy(depCon, azCon)
+
+	glog.Info(result)
+	glog.Error(err)
+	
 	fmt.Println("Item created")
 	fmt.Printf("Name: %v \n", resource.Name)
 }
