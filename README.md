@@ -1,12 +1,14 @@
 Introduction
 ===========
 
+*WARNING* This is a spike/work in-progress
+
 The aim of the project is to allow existing Kubernetes apps to easily use Azure services.
 
-When a services requires, for example, AzureSQL, Postgres, BlobStorage or Redis they can be requested from Azure through kubernetes and the familiar toolchain.
+When a services requires, for example, MSSQL, Postgres, BlobStorage or Redis they can be requested from Azure through the kubernetes toolchain.
 
 The controller provisions the service and creates a service inside the cluster, along with secrets for login,
-to allow apps inside the cluster to use the resource, as if it was deployed in the cluster.
+to allow apps inside the cluster to use the resource as if it was deployed in the cluster.
 
 Details
 --------
