@@ -62,12 +62,15 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 
 			glog.Info("Server not found, creating one")
 
+			detailsType := "Microsoft.DBforPostgreSQL/servers"
 			// Create Server
 			serverConfg := sql.Server{ ServerProperties: &sql.ServerProperties{} }
 			serverConfg.AdministratorLogin = &deployConfig.AdministratorLogin
 			serverConfg.AdministratorLoginPassword = &deployConfig.AdministratorLoginPassword
 			serverConfg.Kind = &deployConfig.Kind
 			serverConfg.Name = &deployConfig.ServerName
+			serverConfg.Location = &deployConfig.Location
+			serverConfg.Type = &detailsType
 
 			deref := serverConfg
 
