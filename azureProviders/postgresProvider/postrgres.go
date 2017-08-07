@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
 	"github.com/Azure/go-autorest/autorest"
@@ -35,7 +36,9 @@ func StringPointer(i string) *string { return &i }
 func Int32Pointer(i int32) *int32    { return &i }
 func IntPointer(i int) *int          { return &i }
 
-func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, error) {
+func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (azureProviders.Output, error) {
+	var output azureProviders.Output
+
 	azConfig, err := azureProviders.GetConfigFromEnv()
 
 	if err != nil {
@@ -72,7 +75,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 				AdministratorLoginPassword: &deployConfig.AdministratorLoginPassword,
 				CreateMode:                 "Default",
 				SslEnforcement:             "Enabled",
-				StorageMB:                  func(i int64) *int64 { return &i }(50),
+				StorageMB:                  func(i int64) *int64 { return &i }(51200),
 				Version:                    postgresql.NineFullStopSix}
 
 			serverSku := postgresql.Sku{
@@ -80,7 +83,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 				Family:   StringPointer("SkuFamily"),
 				Name:     StringPointer("PGSQLB50"),
 				Tier:     "Basic",
-				Size:     StringPointer("50")}
+				Size:     StringPointer("51200")}
 			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: serverPropertiesForCreate}
 			//detailsType := "Microsoft.DBforPostgreSQL/servers"
 			//serverConfg.Type = &detailsType
@@ -91,15 +94,18 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 				azConfig.ResourceGroup, deployConfig.ServerName, serverConfigCreate, cancelChannel)
 			glog.Info("Completed creation")
 
-			//fmt.Printf("Server created %v", result)
+			//Refactor this not sure it's necessary. 
+			//Think it can be done better
 			for index := 0; index < 2; index++ {
 				select {
 				case err := <-errChan:
-					glog.Info(err)
+					glog.Error(err)
+					return output, err
 				case res := <-resultChan:
-					glog.Info(res.Name)
-				case <-time.After(time.Second * 360):
-					glog.Info("Timeout occured creating server")
+					server = res
+				case <-time.After(time.Minute * 6):
+					glog.Error("Timeout occured creating server")
+					return output, errors.New("Timout Occurred provisioning resource")
 				}
 			}
 		}
@@ -114,14 +120,16 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 
 	fmt.Print(server.Name)
 
-	// sqlDbClient := sql.NewDatabasesClient(c.SubscriptionID)
-	// sqlDbClient.Authorizer = auth
+	output = azureProviders.Output{
+		Endpoint: *server.FullyQualifiedDomainName,
+		Port: 5432,
+		Secrets: map[string]string{
+			"username": deployConfig.AdministratorLogin + "@" + deployConfig.ServerName,
+			"password": deployConfig.AdministratorLoginPassword,
+		},
+	}
 
-	// sqlClient.CreateOrUpdate(c.ResourceGroup, serverName, databaseName)
-
-	// sqlClient.Get(os.Getenv("AZURE_RESOURCE_GROUP"), )
-
-	return "hello", nil
+	return output, nil
 }
 
 // NewServicePrincipalTokenFromCredentials creates a new ServicePrincipalToken using values of the

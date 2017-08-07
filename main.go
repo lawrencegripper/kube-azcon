@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"github.com/golang/glog"
+	"github.com/lawrencegripper/kube-azureresources/azureProviders"
+	"github.com/lawrencegripper/kube-azureresources/azureProviders/postgresProvider"
 	"github.com/lawrencegripper/kube-azureresources/crd"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -17,8 +19,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders/postgresProvider"
 )
 
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -36,9 +36,12 @@ func init() {
 	flag.Parse()
 }
 
+var kubeCustomClient *rest.RESTClient
+var clientConfig *rest.Config
+
 func main() {
 	defer glog.Flush()
-	
+
 	exitChannel := make(chan int)
 
 	fmt.Println("hello world")
@@ -47,21 +50,10 @@ func main() {
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
 	kubeconfig := flag.String("kubeconfig", "/Users/lawrence/.kube/lgkube1", "Path to a kubeconfig file")
 
-
-
 	glog.Info("Starting up....")
 
-	// nodeNameEnv := "Barry"
-	// // The node name is necessary so we can identify "self".
-	// // This environment variable is assumed to be set via the pod downward-api, however it can be manually set during testing
-	// nodeName := os.Getenv(nodeNameEnv)
-	// if nodeName == "" {
-	// 	glog.Fatalf("Missing required environment variable %s", nodeNameEnv)
-	// }
-
-	// Build the client config - optionally using a provided kubeconfig file.
-
-	clientConfig, err := getClientConfig(*kubeconfig)
+	var err error
+	clientConfig, err = getClientConfig(*kubeconfig)
 	if err != nil {
 		glog.Fatalf("Failed to load client config: %v", err)
 	}
@@ -83,9 +75,9 @@ func main() {
 		fmt.Println(nodes.Items[index].Name)
 	}
 
-	clientCustom, _, _ := crd.NewClient(clientConfig)
+	kubeCustomClient, _, _ = crd.NewRestClient(clientConfig)
 
-	azureResourceWatch := cache.NewListWatchFromClient(clientCustom, "azureresources", api.NamespaceAll, fields.Everything())
+	azureResourceWatch := cache.NewListWatchFromClient(kubeCustomClient, "azureresources", api.NamespaceAll, fields.Everything())
 	resyncPeriod := 10 * time.Second
 	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
@@ -120,15 +112,30 @@ func resourceCreated(a interface{}) {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb", "westeurope")
 
-	result, err := postgresProvider.Deploy(depCon, azCon)
+	if resource.Status.ProvisioningStatus != "Provisioned" {
+		depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb", "westeurope")
 
-	glog.Info(result)
-	glog.Error(err)
-	
-	fmt.Println("Item created")
-	fmt.Printf("Name: %v \n", resource.Name)
+		result, err := postgresProvider.Deploy(depCon, azCon)
+
+		client, _, err := crd.NewDynamicClient(clientConfig)
+
+		azResourceClient := client.Resource(&meta_v1.APIResource{
+			Kind:       "AzureResource",
+			Name:       "azureresources",
+			Namespaced: true,
+		}, "default")
+
+		resource.Status.ProvisioningStatus = "Provisioned"
+		resource.Status.Output = result
+		resource.Status.LastChecked = time.Now()
+
+		resUnstructured, err := resource.AsUnstructured()
+		updateRes, err := azResourceClient.Update(resUnstructured)
+
+		glog.Info(updateRes)
+		glog.Error(err)
+	}
 }
 
 func resourceDeleted(a interface{}) {
