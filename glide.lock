@@ -1,14 +1,14 @@
-hash: f4a1deb9873e8680732a169ccfa89638798c810aaed639e45af814315327a986
-updated: 2017-07-13T14:11:00.27753215+01:00
+hash: 3ec179930bf5ebc3de38f9903323199fbf4755c1bcd0f265ef1c64ef0796531c
+updated: 2017-08-07T09:46:20.715967718+01:00
 imports:
 - name: github.com/Azure/azure-sdk-for-go
-  version: 59c277f1b488b81b1a5f944212f25b69bea8ece3
+  version: 2d49bb8f2cee530cc16f1f1a9f0aae763dee257d
   subpackages:
   - arm
   - arm/sql
   - management
 - name: github.com/Azure/go-autorest
-  version: 10791a4516e77c53ab10f198f144804cca3d5b43
+  version: f6e08fe5e4d45c9a66e40196d3fed5f37331d224
   subpackages:
   - autorest
   - autorest/adal

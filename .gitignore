@@ -4,3 +4,5 @@ debug
 /.vscode/tasks.json
 /.vscode/launch.json
 tests/integration/debug.test
+*.private.*
+/.idea

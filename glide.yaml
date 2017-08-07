@@ -3,12 +3,12 @@ import:
 - package: k8s.io/client-go
   version: v3.0.0-beta.0
 - package: github.com/Azure/azure-sdk-for-go
-  version: v10.1.0-beta
+  version: v10.2.1-beta
   subpackages: 
   - management
   - arm
 - package: github.com/Azure/go-autorest
-  version: ~8.1.0
+  version: ~8.1.1
   subpackages:
   - /autorest
   - autorest/azure

@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"github.com/lawrencegripper/kube-azureresources/azureProviders"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders/sql"
+	"github.com/lawrencegripper/kube-azureresources/azureProviders/postgresProvider"
 )
 
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
@@ -45,7 +45,7 @@ func main() {
 
 	// When running as a pod in-cluster, a kubeconfig is not needed. Instead this will make use of the service account injected into the pod.
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
-	kubeconfig := flag.String("kubeconfig", "/Users/lawrence/.kube/config.d/sharedcluster.json", "Path to a kubeconfig file")
+	kubeconfig := flag.String("kubeconfig", "/Users/lawrence/.kube/lgkube1", "Path to a kubeconfig file")
 
 
 
@@ -120,11 +120,9 @@ func resourceCreated(a interface{}) {
 	if err != nil {
 		glog.Fatal(err)
 	}
+	depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb", "westeurope")
 
-	var resourcePrefix = "bob"
-	depCon := sql.NewPostgresConfig(resourcePrefix+"testserver", resourcePrefix+"testdb", "westeurope")
-
-	result, err := sql.Deploy(depCon, azCon)
+	result, err := postgresProvider.Deploy(depCon, azCon)
 
 	glog.Info(result)
 	glog.Error(err)

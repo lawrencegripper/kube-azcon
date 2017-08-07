@@ -12,6 +12,7 @@ type ARMConfig struct {
 	SubscriptionID string
 	TenantID       string
 	ResourceGroup  string
+	ResourcePrefix string
 }
 
 // ConfigError - Error when reading configuration values.
@@ -37,6 +38,7 @@ func GetConfigFromEnv() (ARMConfig, error) {
 		ResourceGroup:  os.Getenv("AZURE_RESOURCE_GROUP"),
 		SubscriptionID: os.Getenv("AZURE_SUBSCRIPTION_ID"),
 		TenantID:       os.Getenv("AZURE_TENANT_ID"),
+		ResourcePrefix: os.Getenv("TEST_RESOURCE_PREFIX"),
 	}
 
 	if config.ClientID == "" ||

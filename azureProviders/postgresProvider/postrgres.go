@@ -1,4 +1,4 @@
-package sql
+package postgresProvider
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/sql"
+	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -27,9 +27,13 @@ type Config struct {
 func NewPostgresConfig(serverName, databaseName, location string) Config {
 	config := Config{ServerName: serverName, DatabaseName: databaseName, Location: location}
 	config.AdministratorLogin = "azurePostgres"
-	config.AdministratorLoginPassword = randAlphaNumericSeq(18)
+	config.AdministratorLoginPassword = randAlphaNumericSeq(24)
 	return config
 }
+
+func StringPointer(i string) *string { return &i }
+func Int32Pointer(i int32) *int32    { return &i }
+func IntPointer(i int) *int          { return &i }
 
 func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, error) {
 	azConfig, err := azureProviders.GetConfigFromEnv()
@@ -46,7 +50,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 
 	auth := autorest.NewBearerAuthorizer(spt)
 
-	sqlServerClient := sql.NewServersClient(azConfig.SubscriptionID)
+	sqlServerClient := postgresql.NewServersClient(azConfig.SubscriptionID)
 	sqlServerClient.Authorizer = auth
 
 	server, err := sqlServerClient.Get(azConfig.ResourceGroup, deployConfig.ServerName)
@@ -63,29 +67,41 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (string, err
 			glog.Info("Server not found, creating one")
 
 			// Create Server
-			serverConfg := sql.Server{ ServerProperties: &sql.ServerProperties{} }
-			serverConfg.AdministratorLogin = &deployConfig.AdministratorLogin
-			serverConfg.AdministratorLoginPassword = &deployConfig.AdministratorLoginPassword
-			serverConfg.Kind = &deployConfig.Kind
-			serverConfg.Name = &deployConfig.ServerName
-			serverConfg.Location = &deployConfig.Location
-			
+			serverPropertiesForCreate := postgresql.ServerPropertiesForDefaultCreate{
+				AdministratorLogin:         &deployConfig.AdministratorLogin,
+				AdministratorLoginPassword: &deployConfig.AdministratorLoginPassword,
+				CreateMode:                 "Default",
+				SslEnforcement:             "Enabled",
+				StorageMB:                  func(i int64) *int64 { return &i }(50),
+				Version:                    postgresql.NineFullStopSix}
+
+			serverSku := postgresql.Sku{
+				Capacity: Int32Pointer(50),
+				Family:   StringPointer("SkuFamily"),
+				Name:     StringPointer("PGSQLB50"),
+				Tier:     "Basic",
+				Size:     StringPointer("50")}
+			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: serverPropertiesForCreate}
 			//detailsType := "Microsoft.DBforPostgreSQL/servers"
 			//serverConfg.Type = &detailsType
 
-			deref := serverConfg
-
 			glog.Info("Start creation")
-			result, err := sqlServerClient.CreateOrUpdate(azConfig.ResourceGroup, deployConfig.ServerName, deref)
+			cancelChannel := make(chan struct{})
+			resultChan, errChan := sqlServerClient.CreateOrUpdate(
+				azConfig.ResourceGroup, deployConfig.ServerName, serverConfigCreate, cancelChannel)
 			glog.Info("Completed creation")
 
-			if err != nil {
-				glog.Fatal(err)
+			//fmt.Printf("Server created %v", result)
+			for index := 0; index < 2; index++ {
+				select {
+				case err := <-errChan:
+					glog.Info(err)
+				case res := <-resultChan:
+					glog.Info(res.Name)
+				case <-time.After(time.Second * 360):
+					glog.Info("Timeout occured creating server")
+				}
 			}
-
-			fmt.Printf("Server created %v", result.FullyQualifiedDomainName)
-			server = result
-			fmt.Print(serverConfg)
 		}
 
 		if de.StatusCode == http.StatusUnauthorized || de.StatusCode == http.StatusForbidden {
@@ -118,13 +134,21 @@ func newServicePrincipalTokenFromCredentials(c azureProviders.ARMConfig, scope s
 	return adal.NewServicePrincipalToken(*oauthConfig, c.ClientID, c.ClientSecret, scope)
 }
 
-var letters = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+var lettersLower = []rune("abcdefghijklmnopqrstuvwxyz")
+var lettersUpper = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var numbers = []rune("1234567890")
+var symbols = []rune("!@£%$£^&*_+")
 
 func randAlphaNumericSeq(n int) string {
-	b := make([]rune, n)
+	bucketSize := n / 4
+	return randFromSelection(bucketSize, lettersUpper) + randFromSelection(bucketSize, lettersLower) + randFromSelection(bucketSize, numbers) + randFromSelection(bucketSize, symbols)
+}
+
+func randFromSelection(length int, choices []rune) string {
+	b := make([]rune, length)
 	rand.Seed(time.Now().UnixNano())
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = choices[rand.Intn(len(choices))]
 	}
 	return string(b)
 }
