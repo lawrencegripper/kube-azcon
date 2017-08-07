@@ -29,7 +29,7 @@ func NewRestClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) 
 	return client, scheme, nil
 }
 
-func NewDynamicClient(cfg *rest.Config) (*dynamic.Client, *runtime.Scheme, error) {
+func NewDynamicClientOrDie(cfg *rest.Config) (*dynamic.Client) {
 
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(versionedGroupName, &AzureResource{}, &AzureResourceList{})
@@ -42,8 +42,8 @@ func NewDynamicClient(cfg *rest.Config) (*dynamic.Client, *runtime.Scheme, error
 
 	client, err := dynamic.NewClient(&config)
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
 
-	return client, scheme, nil
+	return client
 }

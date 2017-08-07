@@ -36,8 +36,9 @@ func init() {
 	flag.Parse()
 }
 
-var kubeCustomClient *rest.RESTClient
 var clientConfig *rest.Config
+var kubeClient *kubernetes.Clientset
+var kubeCustomClient *rest.RESTClient
 
 func main() {
 	defer glog.Flush()
@@ -63,6 +64,8 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to create kubernetes client: %v", err)
 	}
+
+	kubeClient = client
 
 	nodes, err := client.Nodes().List(meta_v1.ListOptions{})
 
@@ -114,27 +117,18 @@ func resourceCreated(a interface{}) {
 	}
 
 	if resource.Status.ProvisioningStatus != "Provisioned" {
-		depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb", "westeurope")
+		depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb","westeurope","default")
 
 		result, err := postgresProvider.Deploy(depCon, azCon)
+		if err != nil {
+			glog.Error("Failed to create resource")
+			glog.Error(err)
+			return
+		}
 
-		client, _, err := crd.NewDynamicClient(clientConfig)
+		k := azureProviders.NewKubeMan(clientConfig)
 
-		azResourceClient := client.Resource(&meta_v1.APIResource{
-			Kind:       "AzureResource",
-			Name:       "azureresources",
-			Namespaced: true,
-		}, "default")
-
-		resource.Status.ProvisioningStatus = "Provisioned"
-		resource.Status.Output = result
-		resource.Status.LastChecked = time.Now()
-
-		resUnstructured, err := resource.AsUnstructured()
-		updateRes, err := azResourceClient.Update(resUnstructured)
-
-		glog.Info(updateRes)
-		glog.Error(err)
+		k.Update(resource.Name, result)
 	}
 }
 

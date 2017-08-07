@@ -3,10 +3,12 @@ package postgresProvider
 import (
 	"net/http"
 
+	"github.com/lawrencegripper/kube-azureresources/models"
+
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
-	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
 	"github.com/Azure/go-autorest/autorest"
@@ -23,10 +25,15 @@ type Config struct {
 	AdministratorLogin         string
 	AdministratorLoginPassword string
 	Kind                       string
+	Namespace                  string
 }
 
-func NewPostgresConfig(serverName, databaseName, location string) Config {
-	config := Config{ServerName: serverName, DatabaseName: databaseName, Location: location}
+func NewPostgresConfig(serverName, databaseName, location string, namespace string) Config {
+	config := Config{
+		ServerName:   serverName,
+		DatabaseName: databaseName,
+		Location:     location,
+		Namespace:    namespace}
 	config.AdministratorLogin = "azurePostgres"
 	config.AdministratorLoginPassword = randAlphaNumericSeq(24)
 	return config
@@ -36,8 +43,8 @@ func StringPointer(i string) *string { return &i }
 func Int32Pointer(i int32) *int32    { return &i }
 func IntPointer(i int) *int          { return &i }
 
-func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (azureProviders.Output, error) {
-	var output azureProviders.Output
+func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Output, error) {
+	var output models.Output
 
 	azConfig, err := azureProviders.GetConfigFromEnv()
 
@@ -94,7 +101,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (azureProvid
 				azConfig.ResourceGroup, deployConfig.ServerName, serverConfigCreate, cancelChannel)
 			glog.Info("Completed creation")
 
-			//Refactor this not sure it's necessary. 
+			//Refactor this not sure it's necessary.
 			//Think it can be done better
 			for index := 0; index < 2; index++ {
 				select {
@@ -120,13 +127,15 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (azureProvid
 
 	fmt.Print(server.Name)
 
-	output = azureProviders.Output{
+	output = models.Output{
 		Endpoint: *server.FullyQualifiedDomainName,
-		Port: 5432,
+		Port:     5432,
 		Secrets: map[string]string{
 			"username": deployConfig.AdministratorLogin + "@" + deployConfig.ServerName,
 			"password": deployConfig.AdministratorLoginPassword,
 		},
+		Namespace: deployConfig.Namespace,
+		ServiceName: deployConfig.ServerName,
 	}
 
 	return output, nil

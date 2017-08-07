@@ -1,9 +1,9 @@
 package crd
 
 import (
+	"github.com/lawrencegripper/kube-azureresources/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"encoding/json"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders"
 	"time"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,7 +39,7 @@ type AzureResourceSpec struct {
 type AzureResourceStatus struct {
 	ProvisioningStatus string `json:"provisioningStatus"`
 	LastChecked        time.Time `json:"lastChecked"`
-	Output			   azureProviders.Output `json:"ouput"`
+	Output			   models.Output `json:"ouput"`
 }
 
 
@@ -55,4 +55,18 @@ func (a *AzureResource) AsUnstructured() (*unstructured.Unstructured, error) {
 		return nil, err
 	}
 	return &r, nil
+}
+
+func AzureResourceFromUnstructured(r *unstructured.Unstructured) (*AzureResource, error) {
+	b, err := json.Marshal(r.Object)
+	if err != nil {
+		return nil, err
+	}
+	var a AzureResource
+	if err := json.Unmarshal(b, &a); err != nil {
+		return nil, err
+	}
+	a.TypeMeta.Kind = AzureResourceKind
+	a.TypeMeta.APIVersion = versionedGroupName.Group + "/" + versionedGroupName.Version
+	return &a, nil
 }
