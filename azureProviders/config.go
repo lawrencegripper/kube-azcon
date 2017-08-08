@@ -31,7 +31,7 @@ func (e *ConfigError) Error() string {
 }
 
 // GetConfigFromEnv - Retreives the azure configuration from environment variables.
-func GetConfigFromEnv() (ARMConfig, error) {
+func GetAzureConfigFromEnv() (ARMConfig, error) {
 	config := ARMConfig{
 		ClientID:       os.Getenv("AZURE_CLIENT_ID"),
 		ClientSecret:   os.Getenv("AZURE_CLIENT_SECRET"),

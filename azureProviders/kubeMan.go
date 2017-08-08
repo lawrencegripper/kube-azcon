@@ -1,6 +1,8 @@
 package azureProviders
 
 import (
+	// "github.com/Azure/go-autorest/autorest"
+	// "github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/client-go/dynamic"
 	"time"
 	"github.com/lawrencegripper/kube-azureresources/crd"
@@ -28,12 +30,33 @@ func NewKubeMan(config *rest.Config) KubeMan {
 	}
 }
 
-func (k *KubeMan) Update(resourceName string, serviceOutput models.Output){
-	k.updateCrd(resourceName, serviceOutput)
-	k.addServiceAndSecrets(serviceOutput)
+// func (k *KubeMan) IsUptodate(azResource crd.AzureResource){
+// 	azConfig, err := GetConfigFromEnv()
+
+// 	if err != nil {
+// 		glog.Fatalf("Failed to get azure configuration from environment: %v", err)
+// 	}
+
+// 	spt, err := NewServicePrincipalTokenFromCredentials(azConfig, azure.PublicCloud.ResourceManagerEndpoint)
+
+// 	if err != nil {
+// 		glog.Fatalf("Failed creating service principal: %v", err)
+// 	}
+
+// 	auth := autorest.NewBearerAuthorizer(spt)
+
+// 	client := autorest.NewClientWithUserAgent("kubernetes")
+// 	client.Authorizer = auth
+
+// 	client.
+// }
+
+func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Output){
+	k.updateCrd(azResource, serviceOutput)
+	k.addServiceAndSecrets(azResource, serviceOutput)
 }
 
-func (k *KubeMan) updateCrd(resourceName string, serviceOutput models.Output) {
+func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.Output) {
 
 	azResourceClient := k.dynamicClient.Resource(&metav1.APIResource{
 		Kind:       "AzureResource",
@@ -41,7 +64,7 @@ func (k *KubeMan) updateCrd(resourceName string, serviceOutput models.Output) {
 		Namespaced: true,
 	}, "default")
 
-	resUnstructured, err := azResourceClient.Get(resourceName)
+	resUnstructured, err := azResourceClient.Get(azResource.Name)
 
 	if err != nil{
 		glog.Error(err)
@@ -58,6 +81,7 @@ func (k *KubeMan) updateCrd(resourceName string, serviceOutput models.Output) {
 	resource.Status.Output = serviceOutput
 	resource.Status.LastChecked = time.Now()
 
+	// Investigate moving to patch command. Could concurrent read and update be overwritten currenctly?
 	resToUpdate, err := resource.AsUnstructured()
 	updateRes, err := azResourceClient.Update(resToUpdate)
 
@@ -65,10 +89,10 @@ func (k *KubeMan) updateCrd(resourceName string, serviceOutput models.Output) {
 	glog.Info(updateRes)
 }
 
-func (k *KubeMan) addServiceAndSecrets(serviceOutput models.Output) {
+func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutput models.Output) {
 	service := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: serviceOutput.ServiceName,
+			Name: azResource.Name,
 		},
 		Spec: v1.ServiceSpec{
 			Type:         "ExternalName",
@@ -76,7 +100,7 @@ func (k *KubeMan) addServiceAndSecrets(serviceOutput models.Output) {
 		},
 	}
 
-	srvRes, err := k.client.Services(serviceOutput.Namespace).Create(&service)
+	srvRes, err := k.client.Services(azResource.Namespace).Create(&service)
 
 	if err != nil {
 		glog.Error("Failed creating service")
@@ -88,12 +112,12 @@ func (k *KubeMan) addServiceAndSecrets(serviceOutput models.Output) {
 
 	secret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: serviceOutput.ServiceName,
+			Name: azResource.Name,
 		},
 		Data: serviceOutput.GetSecretMap(),
 	}
 
-	secretRes, err := k.client.Secrets(serviceOutput.Namespace).Create(&secret)
+	secretRes, err := k.client.Secrets(azResource.Namespace).Create(&secret)
 
 	if err != nil {
 		glog.Error("Failed creating secret")

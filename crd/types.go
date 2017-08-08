@@ -12,6 +12,7 @@ import (
 const (
 	AzureResourceKind = "AzureResource"
 	AzureResourceType = "azureresources"
+	TagKubernetesResourceLink = "KubernetesLink"
 )
 
 func (v *AzureResource) GetObjectKind() schema.ObjectKind {
@@ -41,7 +42,16 @@ type AzureResourceStatus struct {
 	LastChecked        time.Time `json:"lastChecked"`
 	Output			   models.Output `json:"ouput"`
 }
+func stringPointer(i string) *string { return &i }
 
+func (a *AzureResource) GenerateAzureTags() map[string]*string {
+	return map[string]*string{
+		"CreatedBy": stringPointer("kube-azcon"),
+		"KubernetesResourceName": &a.Name,
+		TagKubernetesResourceLink: &a.SelfLink,
+		"KubernetesResourceVersion": &a.ResourceVersion,
+	}
+}
 
 func (a *AzureResource) AsUnstructured() (*unstructured.Unstructured, error) {
 	a.TypeMeta.Kind = AzureResourceKind

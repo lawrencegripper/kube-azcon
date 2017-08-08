@@ -9,7 +9,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/lawrencegripper/kube-azureresources/azureProviders"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders/postgresProvider"
 	"github.com/lawrencegripper/kube-azureresources/crd"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -81,8 +80,7 @@ func main() {
 	kubeCustomClient, _, _ = crd.NewRestClient(clientConfig)
 
 	azureResourceWatch := cache.NewListWatchFromClient(kubeCustomClient, "azureresources", api.NamespaceAll, fields.Everything())
-	resyncPeriod := 10 * time.Second
-	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, resyncPeriod, cache.ResourceEventHandlerFuncs{
+	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, time.Second*0, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
 		DeleteFunc: resourceDeleted,
 		UpdateFunc: resourceUpdated,
@@ -110,34 +108,18 @@ func main() {
 func resourceCreated(a interface{}) {
 	resource := a.(*crd.AzureResource)
 
-	azCon, err := azureProviders.GetConfigFromEnv()
-
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	if resource.Status.ProvisioningStatus != "Provisioned" {
-		depCon := postgresProvider.NewPostgresConfig(azCon.ResourcePrefix+"testserver", azCon.ResourcePrefix+"testdb","westeurope","default")
-
-		result, err := postgresProvider.Deploy(depCon, azCon)
-		if err != nil {
-			glog.Error("Failed to create resource")
-			glog.Error(err)
-			return
-		}
-
-		k := azureProviders.NewKubeMan(clientConfig)
-
-		k.Update(resource.Name, result)
+	switch resource.Spec.ResourceProvider {
+	case "postgres":
+		checkAndUpdatePostgres(*resource)
+	case "cosmos":
+		checkAndUpdateCosmos(*resource)
+	default:
+		glog.Error("Cannot progress resource of this type", resource)
 	}
 }
 
 func resourceDeleted(a interface{}) {
 	resource := a.(*crd.AzureResource)
-
-	// if resource.Spec.ResourceProvider == "azuresql" {
-	// 	result, err := sql.Deploy("","","")
-	// }
 
 	fmt.Println("Item deleted")
 	fmt.Printf("Name: %v \n", resource.Name)
@@ -148,4 +130,57 @@ func resourceUpdated(oldItem, newItem interface{}) {
 
 	fmt.Println("Item Updated")
 	fmt.Printf("Name: %v \n", resource.Name)
+
+	switch resource.Spec.ResourceProvider {
+	case "postgres":
+		checkAndUpdatePostgres(*resource)
+	case "cosmos":
+		checkAndUpdateCosmos(*resource)
+	default:
+		glog.Error("Cannot progress resource of this type", resource)
+	}
+}
+
+func checkAndUpdatePostgres(resource crd.AzureResource) {
+	azCon, err := azureProviders.GetAzureConfigFromEnv()
+
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	if resource.Status.ProvisioningStatus != "Provisioned" {
+		depCon := azureProviders.NewPostgresConfig(resource)
+
+		result, err := azureProviders.DeployPostgres(depCon, azCon)
+		if err != nil {
+			glog.Error("Failed to create resource")
+			glog.Error(err)
+			return
+		}
+
+		k := azureProviders.NewKubeMan(clientConfig)
+
+		k.Update(resource, result)
+	}
+}
+
+func checkAndUpdateCosmos(resource crd.AzureResource) {
+	azCon, err := azureProviders.GetAzureConfigFromEnv()
+
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	depCon := azureProviders.NewCosmosConfig(azCon, resource)
+
+	result, err := azureProviders.DeployCosmos(depCon, azCon)
+	if err != nil {
+		glog.Error("Failed to create resource")
+		glog.Error(err)
+		return
+	}
+
+	k := azureProviders.NewKubeMan(clientConfig)
+
+	k.Update(resource, result)
 }

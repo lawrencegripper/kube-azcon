@@ -1,6 +1,7 @@
-package postgresProvider
+package azureProviders
 
 import (
+	"github.com/lawrencegripper/kube-azureresources/crd"
 	"net/http"
 
 	"github.com/lawrencegripper/kube-azureresources/models"
@@ -12,47 +13,39 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/golang/glog"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders"
 )
 
-type Config struct {
+type PostgresConfig struct {
 	ServerName                 string
-	DatabaseName               string
 	Location                   string
 	AdministratorLogin         string
 	AdministratorLoginPassword string
-	Kind                       string
-	Namespace                  string
+	Tags                       map[string]*string
 }
 
-func NewPostgresConfig(serverName, databaseName, location string, namespace string) Config {
-	config := Config{
-		ServerName:   serverName,
-		DatabaseName: databaseName,
-		Location:     location,
-		Namespace:    namespace}
-	config.AdministratorLogin = "azurePostgres"
-	config.AdministratorLoginPassword = randAlphaNumericSeq(24)
+func NewPostgresConfig(azRes crd.AzureResource) PostgresConfig {
+	config := PostgresConfig{
+		ServerName: randFromSelection(12, lettersLower),
+		Location:   azRes.Spec.Location,
+		Tags: azRes.GenerateAzureTags(),
+		AdministratorLogin: "azurePostgres",
+		AdministratorLoginPassword: randAlphaNumericSeq(24),
+	}
 	return config
 }
 
-func StringPointer(i string) *string { return &i }
-func Int32Pointer(i int32) *int32    { return &i }
-func IntPointer(i int) *int          { return &i }
-
-func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Output, error) {
+func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Output, error) {
 	var output models.Output
 
-	azConfig, err := azureProviders.GetConfigFromEnv()
+	azConfig, err := GetAzureConfigFromEnv()
 
 	if err != nil {
 		glog.Fatalf("Failed to get azure configuration from environment: %v", err)
 	}
 
-	spt, err := newServicePrincipalTokenFromCredentials(azConfig, azure.PublicCloud.ResourceManagerEndpoint)
+	spt, err := NewServicePrincipalTokenFromCredentials(azConfig, azure.PublicCloud.ResourceManagerEndpoint)
 
 	if err != nil {
 		glog.Fatalf("Failed creating service principal: %v", err)
@@ -82,7 +75,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Outp
 				AdministratorLoginPassword: &deployConfig.AdministratorLoginPassword,
 				CreateMode:                 "Default",
 				SslEnforcement:             "Enabled",
-				StorageMB:                  func(i int64) *int64 { return &i }(51200),
+				StorageMB:                  Int64Pointer(51200),
 				Version:                    postgresql.NineFullStopSix}
 
 			serverSku := postgresql.Sku{
@@ -92,6 +85,7 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Outp
 				Tier:     "Basic",
 				Size:     StringPointer("51200")}
 			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: serverPropertiesForCreate}
+			serverConfigCreate.Tags = &deployConfig.Tags
 			//detailsType := "Microsoft.DBforPostgreSQL/servers"
 			//serverConfg.Type = &detailsType
 
@@ -99,7 +93,6 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Outp
 			cancelChannel := make(chan struct{})
 			resultChan, errChan := sqlServerClient.CreateOrUpdate(
 				azConfig.ResourceGroup, deployConfig.ServerName, serverConfigCreate, cancelChannel)
-			glog.Info("Completed creation")
 
 			//Refactor this not sure it's necessary.
 			//Think it can be done better
@@ -110,11 +103,13 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Outp
 					return output, err
 				case res := <-resultChan:
 					server = res
+					glog.Info("Completed creation")
 				case <-time.After(time.Minute * 6):
 					glog.Error("Timeout occured creating server")
 					return output, errors.New("Timout Occurred provisioning resource")
 				}
 			}
+
 		}
 
 		if de.StatusCode == http.StatusUnauthorized || de.StatusCode == http.StatusForbidden {
@@ -134,23 +129,14 @@ func Deploy(deployConfig Config, azConfig azureProviders.ARMConfig) (models.Outp
 			"username": deployConfig.AdministratorLogin + "@" + deployConfig.ServerName,
 			"password": deployConfig.AdministratorLoginPassword,
 		},
-		Namespace: deployConfig.Namespace,
-		ServiceName: deployConfig.ServerName,
+		AzureResourceIds: []string{*server.ID},
 	}
 
 	return output, nil
 }
 
-// NewServicePrincipalTokenFromCredentials creates a new ServicePrincipalToken using values of the
-// passed credentials map.
-func newServicePrincipalTokenFromCredentials(c azureProviders.ARMConfig, scope string) (*adal.ServicePrincipalToken, error) {
-	oauthConfig, err := adal.NewOAuthConfig(azure.PublicCloud.ActiveDirectoryEndpoint, c.TenantID)
-	if err != nil {
-		panic(err)
-	}
-	return adal.NewServicePrincipalToken(*oauthConfig, c.ClientID, c.ClientSecret, scope)
-}
-
+//This is probably a pretty nasty hack, was interesting to play with runes.
+//Todo: Simplify Password generation.
 var lettersLower = []rune("abcdefghijklmnopqrstuvwxyz")
 var lettersUpper = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var numbers = []rune("1234567890")

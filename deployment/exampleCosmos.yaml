@@ -1,7 +1,8 @@
 apiVersion: "stable.gripdev.xyz/v1"
 kind: AzureResource
 metadata:
-  name: postgresql3
+  name: cosmos3
 spec:
-  resourceProvider: azurePostgres
+  resourceProvider: cosmos
   location: westeurope
+
