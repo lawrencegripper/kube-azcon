@@ -1,12 +1,13 @@
 package azureProviders
 
 import (
+	"bytes"
 	// "github.com/Azure/go-autorest/autorest"
 	// "github.com/Azure/go-autorest/autorest/azure"
-	"k8s.io/client-go/dynamic"
-	"time"
+
 	"github.com/lawrencegripper/kube-azureresources/crd"
 	"github.com/lawrencegripper/kube-azureresources/models"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,17 +17,17 @@ import (
 )
 
 type KubeMan struct {
-	client *kubernetes.Clientset
-	config *rest.Config
+	client        *kubernetes.Clientset
+	config        *rest.Config
 	dynamicClient *dynamic.Client
 }
 
 //NewKubeMan - Creates a new kubeman for interfacing with the cluster.
 func NewKubeMan(config *rest.Config) KubeMan {
 	return KubeMan{
-		client: kubernetes.NewForConfigOrDie(config),
+		client:        kubernetes.NewForConfigOrDie(config),
 		dynamicClient: crd.NewDynamicClientOrDie(config),
-		config: config,
+		config:        config,
 	}
 }
 
@@ -51,7 +52,7 @@ func NewKubeMan(config *rest.Config) KubeMan {
 // 	client.
 // }
 
-func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Output){
+func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Output) {
 	k.updateCrd(azResource, serviceOutput)
 	k.addServiceAndSecrets(azResource, serviceOutput)
 }
@@ -65,28 +66,42 @@ func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.O
 	}, "default")
 
 	resUnstructured, err := azResourceClient.Get(azResource.Name)
+	preUpdateJson, _ := resUnstructured.MarshalJSON()
 
-	if err != nil{
+	if err != nil {
 		glog.Error(err)
 		panic(err)
 	}
-	
+
 	resource, err := crd.AzureResourceFromUnstructured(resUnstructured)
 
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
 	resource.Status.ProvisioningStatus = "Provisioned"
 	resource.Status.Output = serviceOutput
-	resource.Status.LastChecked = time.Now()
 
 	// Investigate moving to patch command. Could concurrent read and update be overwritten currenctly?
-	resToUpdate, err := resource.AsUnstructured()
-	updateRes, err := azResourceClient.Update(resToUpdate)
+	resToUpdate, _ := resource.AsUnstructured()
+	postUpdateJSON, _ := resToUpdate.MarshalJSON()
 
-	glog.Info("Updated azure resource")
-	glog.Info(updateRes)
+	glog.Info(string(preUpdateJson))
+	glog.Info(string(postUpdateJSON))
+
+	//Only update if things have changed.
+	if bytes.Compare(preUpdateJson, postUpdateJSON) != 0 {
+		updateRes, err := azResourceClient.Update(resToUpdate)
+		if err != nil {
+			glog.Error("Failed to update resource")
+			glog.Error(err)
+		} else {
+			glog.Info("Updated azure resource")
+			glog.Info(updateRes)
+		}
+	}
+
+	glog.Info("Resource unchanged. Not updating in kube")
 }
 
 func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutput models.Output) {

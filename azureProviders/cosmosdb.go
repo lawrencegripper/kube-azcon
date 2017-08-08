@@ -1,6 +1,7 @@
 package azureProviders
 
 import (
+	"strings"
 	"github.com/lawrencegripper/kube-azureresources/crd"
 
 	"github.com/lawrencegripper/kube-azureresources/models"
@@ -28,9 +29,7 @@ func NewCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource, ) CosmosConfig
 		Tags:        azRes.GenerateAzureTags(),
 		KubeLink:    azRes.SelfLink,
 	}
-
-	// temp add default experince
-	config.Tags["defaultExperience"] = StringPointer("MongoDB")
+	
 	return config
 }
 
@@ -72,6 +71,9 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 			}
 			tags := *v.Tags
 			kubeLink, exists := tags[crd.TagKubernetesResourceLink]
+			glog.Info(*kubeLink)
+			glog.Info(deployConfig.KubeLink)
+			glog.Info(exists && *kubeLink == deployConfig.KubeLink)
 			if exists && *kubeLink == deployConfig.KubeLink {
 				dbAccount = v
 				accountExists = true
@@ -142,18 +144,16 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 
 	glog.Info("Connection strings")
 
-	secrets := map[string]string{}
+	secrets := make(map[string]string)
 	if connectionStrings.ConnectionStrings != nil{
 		for _, con := range *connectionStrings.ConnectionStrings {
-			secrets[*con.Description] = *con.ConnectionString
+			secrets[strings.Replace(*con.Description, " ", "", -1)] = *con.ConnectionString //Strip spaces from connection string. 
 		}
 	}
 
-
-
 	output = models.Output{
-		Endpoint:         *dbAccount.DocumentEndpoint,
-		Port:             5432,
+		Endpoint:         *dbAccount.Name + "documents.azure.com", //Hack: keep things simple
+		Port:             443,
 		Secrets:          secrets,
 		AzureResourceIds: []string{*dbAccount.ID},
 	}
