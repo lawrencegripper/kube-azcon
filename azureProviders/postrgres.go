@@ -1,14 +1,14 @@
 package azureProviders
 
 import (
-	"github.com/lawrencegripper/kube-azureresources/crd"
 	"net/http"
+
+	"github.com/lawrencegripper/kube-azureresources/crd"
 
 	"github.com/lawrencegripper/kube-azureresources/models"
 
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
@@ -27,10 +27,10 @@ type PostgresConfig struct {
 
 func NewPostgresConfig(azRes crd.AzureResource) PostgresConfig {
 	config := PostgresConfig{
-		ServerName: randFromSelection(12, lettersLower),
-		Location:   azRes.Spec.Location,
-		Tags: azRes.GenerateAzureTags(),
-		AdministratorLogin: "azurePostgres",
+		ServerName:                 randFromSelection(12, lettersLower),
+		Location:                   azRes.Spec.Location,
+		Tags:                       azRes.GenerateAzureTags(),
+		AdministratorLogin:         "azurePostgres",
 		AdministratorLoginPassword: randAlphaNumericSeq(24),
 	}
 	return config
@@ -133,25 +133,4 @@ func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Out
 	}
 
 	return output, nil
-}
-
-//This is probably a pretty nasty hack, was interesting to play with runes.
-//Todo: Simplify Password generation.
-var lettersLower = []rune("abcdefghijklmnopqrstuvwxyz")
-var lettersUpper = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-var numbers = []rune("1234567890")
-var symbols = []rune("!@£%$£^&*_+")
-
-func randAlphaNumericSeq(n int) string {
-	bucketSize := n / 4
-	return randFromSelection(bucketSize, lettersUpper) + randFromSelection(bucketSize, lettersLower) + randFromSelection(bucketSize, numbers) + randFromSelection(bucketSize, symbols)
-}
-
-func randFromSelection(length int, choices []rune) string {
-	b := make([]rune, length)
-	rand.Seed(time.Now().UnixNano())
-	for i := range b {
-		b[i] = choices[rand.Intn(len(choices))]
-	}
-	return string(b)
 }

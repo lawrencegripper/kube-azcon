@@ -22,8 +22,11 @@ import (
 
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	if kubeconfig != "" {
-		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if  _, err := os.Stat(kubeconfig); !os.IsNotExist(err) {
+			return clientcmd.BuildConfigFromFlags("", kubeconfig)
+		}
 	}
+	
 	return rest.InClusterConfig()
 }
 
@@ -131,6 +134,11 @@ func resourceUpdated(oldItem, newItem interface{}) {
 	fmt.Println("Item Updated")
 	fmt.Printf("Name: %v \n", resource.Name)
 
+	if resource.Status.ProvisioningStatus == "Provisioned" {
+		//Todo: Handle and reconcile changes in both kube and azure to update resources.
+		return
+	}
+
 	switch resource.Spec.ResourceProvider {
 	case "postgres":
 		checkAndUpdatePostgres(*resource)
@@ -148,20 +156,16 @@ func checkAndUpdatePostgres(resource crd.AzureResource) {
 		glog.Fatal(err)
 	}
 
-	if resource.Status.ProvisioningStatus != "Provisioned" {
-		depCon := azureProviders.NewPostgresConfig(resource)
+	depCon := azureProviders.NewPostgresConfig(resource)
 
-		result, err := azureProviders.DeployPostgres(depCon, azCon)
-		if err != nil {
-			glog.Error("Failed to create resource")
-			glog.Error(err)
-			return
-		}
-
-		k := azureProviders.NewKubeMan(clientConfig)
-
-		k.Update(resource, result)
+	result, err := azureProviders.DeployPostgres(depCon, azCon)
+	if err != nil {
+		glog.Error("Failed to create resource")
+		glog.Error(err)
 	}
+
+	k := azureProviders.NewKubeMan(clientConfig)
+	k.Update(resource, result, err)
 }
 
 func checkAndUpdateCosmos(resource crd.AzureResource) {
@@ -181,6 +185,5 @@ func checkAndUpdateCosmos(resource crd.AzureResource) {
 	}
 
 	k := azureProviders.NewKubeMan(clientConfig)
-
-	k.Update(resource, result)
+	k.Update(resource, result, err)
 }

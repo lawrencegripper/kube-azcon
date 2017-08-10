@@ -1,9 +1,12 @@
 package azureProviders
 
 import (
-	"bytes"
+	"errors"
+
 	// "github.com/Azure/go-autorest/autorest"
 	// "github.com/Azure/go-autorest/autorest/azure"
+
+	"reflect"
 
 	"github.com/lawrencegripper/kube-azureresources/crd"
 	"github.com/lawrencegripper/kube-azureresources/models"
@@ -19,54 +22,42 @@ import (
 type KubeMan struct {
 	client        *kubernetes.Clientset
 	config        *rest.Config
-	dynamicClient *dynamic.Client
+	resourceClient *dynamic.ResourceClient
 }
 
 //NewKubeMan - Creates a new kubeman for interfacing with the cluster.
 func NewKubeMan(config *rest.Config) KubeMan {
 	return KubeMan{
 		client:        kubernetes.NewForConfigOrDie(config),
-		dynamicClient: crd.NewDynamicClientOrDie(config),
+		resourceClient: crd.NewDynamicClientOrDie(config).Resource(&metav1.APIResource{
+		Kind:       "AzureResource",
+		Name:       "azureresources",
+		Namespaced: true,
+		}, "default"),
 		config:        config,
 	}
 }
 
-// func (k *KubeMan) IsUptodate(azResource crd.AzureResource){
-// 	azConfig, err := GetConfigFromEnv()
+func (k *KubeMan) IsUptodate(azResource crd.AzureResource) (IsUptodate *bool, err error) {
 
-// 	if err != nil {
-// 		glog.Fatalf("Failed to get azure configuration from environment: %v", err)
-// 	}
+	return nil, errors.New("Not implimented yet")
+}
 
-// 	spt, err := NewServicePrincipalTokenFromCredentials(azConfig, azure.PublicCloud.ResourceManagerEndpoint)
+func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Output, err error) {
+	if err != nil {
+		azResource.Status.ProvisioningStatus = "Error" + err.Error()
+		resU, _ := azResource.AsUnstructured()
+		k.resourceClient.Update(resU)
 
-// 	if err != nil {
-// 		glog.Fatalf("Failed creating service principal: %v", err)
-// 	}
+	} else {
+		k.updateCrd(azResource, serviceOutput)
 
-// 	auth := autorest.NewBearerAuthorizer(spt)
-
-// 	client := autorest.NewClientWithUserAgent("kubernetes")
-// 	client.Authorizer = auth
-
-// 	client.
-// }
-
-func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Output) {
-	k.updateCrd(azResource, serviceOutput)
-	k.addServiceAndSecrets(azResource, serviceOutput)
+		k.addServiceAndSecrets(azResource, serviceOutput)
+	}
 }
 
 func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.Output) {
-
-	azResourceClient := k.dynamicClient.Resource(&metav1.APIResource{
-		Kind:       "AzureResource",
-		Name:       "azureresources",
-		Namespaced: true,
-	}, "default")
-
-	resUnstructured, err := azResourceClient.Get(azResource.Name)
-	preUpdateJson, _ := resUnstructured.MarshalJSON()
+	resUnstructured, err := k.resourceClient.Get(azResource.Name)
 
 	if err != nil {
 		glog.Error(err)
@@ -84,14 +75,11 @@ func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.O
 
 	// Investigate moving to patch command. Could concurrent read and update be overwritten currenctly?
 	resToUpdate, _ := resource.AsUnstructured()
-	postUpdateJSON, _ := resToUpdate.MarshalJSON()
 
-	glog.Info(string(preUpdateJson))
-	glog.Info(string(postUpdateJSON))
+	//Only update if status has changed.
+	if !reflect.DeepEqual(resource.Status, azResource.Status) {
 
-	//Only update if things have changed.
-	if bytes.Compare(preUpdateJson, postUpdateJSON) != 0 {
-		updateRes, err := azResourceClient.Update(resToUpdate)
+		updateRes, err := k.resourceClient.Update(resToUpdate)
 		if err != nil {
 			glog.Error("Failed to update resource")
 			glog.Error(err)
@@ -105,6 +93,7 @@ func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.O
 }
 
 func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutput models.Output) {
+		
 	service := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: azResource.Name,
@@ -116,6 +105,10 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 	}
 
 	srvRes, err := k.client.Services(azResource.Namespace).Create(&service)
+	//Hack: If we can't create it try and udpate it. 
+	if err != nil {
+		srvRes, err = k.client.Services(azResource.Namespace).Update(&service)
+	}
 
 	if err != nil {
 		glog.Error("Failed creating service")
@@ -133,6 +126,10 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 	}
 
 	secretRes, err := k.client.Secrets(azResource.Namespace).Create(&secret)
+	//Hack: If we can't create it try and update it. 
+	if err != nil {
+		secretRes, err = k.client.Secrets(azResource.Namespace).Create(&secret)
+	}
 
 	if err != nil {
 		glog.Error("Failed creating secret")

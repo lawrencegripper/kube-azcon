@@ -2,6 +2,7 @@ package azureProviders
 
 import (
 	"strings"
+
 	"github.com/lawrencegripper/kube-azureresources/crd"
 
 	"github.com/lawrencegripper/kube-azureresources/models"
@@ -22,14 +23,14 @@ type CosmosConfig struct {
 	KubeLink    string
 }
 
-func NewCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource, ) CosmosConfig {
+func NewCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource) CosmosConfig {
 	config := CosmosConfig{
 		AccountName: azConfig.ResourcePrefix + azRes.Name,
 		Location:    azRes.Spec.Location,
 		Tags:        azRes.GenerateAzureTags(),
 		KubeLink:    azRes.SelfLink,
 	}
-	
+
 	return config
 }
 
@@ -71,10 +72,8 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 			}
 			tags := *v.Tags
 			kubeLink, exists := tags[crd.TagKubernetesResourceLink]
-			glog.Info(*kubeLink)
-			glog.Info(deployConfig.KubeLink)
-			glog.Info(exists && *kubeLink == deployConfig.KubeLink)
 			if exists && *kubeLink == deployConfig.KubeLink {
+				glog.Info("Found matching resource in Azure for:", deployConfig.KubeLink)
 				dbAccount = v
 				accountExists = true
 				break
@@ -82,9 +81,8 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 		}
 	}
 
-	glog.Info("Cosmos Account Exists", accountExists, deployConfig.AccountName)
-
 	if !accountExists {
+		glog.Info("Starting Cosmos Deployment")
 
 		cancelChannel := make(chan struct{})
 		locationID := deployConfig.AccountName + deployConfig.Location
@@ -103,7 +101,6 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 			},
 		}
 
-		glog.Info("Starting Cosmos Deployment")
 		resultChan, errChan := client.CreateOrUpdate(azConfig.ResourceGroup, deployConfig.AccountName, properties, cancelChannel)
 
 		//Refactor this not sure it's necessary.
@@ -126,14 +123,15 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 		}
 
 	} else {
-		switch *dbAccount.ProvisioningState{
-			case "Succeeded":
-				glog.Info("Resource already deployed. Status:", *dbAccount.ProvisioningState)
-			default:
-				glog.Error("Todo: Handle other deployment states for the resource", *dbAccount.ProvisioningState)
+		glog.Info("Cosmos Account Exists:", deployConfig.AccountName)
+
+		switch *dbAccount.ProvisioningState {
+		case "Succeeded":
+			glog.Info("Resource already deployed. Status:", *dbAccount.ProvisioningState)
+		default:
+			glog.Error("Todo: Handle other deployment states for the resource", *dbAccount.ProvisioningState)
 		}
 	}
-
 
 	glog.Info("Getting connection strings")
 	connectionStrings, err := client.ListConnectionStrings(azConfig.ResourceGroup, *dbAccount.Name)
@@ -145,9 +143,9 @@ func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output,
 	glog.Info("Connection strings")
 
 	secrets := make(map[string]string)
-	if connectionStrings.ConnectionStrings != nil{
+	if connectionStrings.ConnectionStrings != nil {
 		for _, con := range *connectionStrings.ConnectionStrings {
-			secrets[strings.Replace(*con.Description, " ", "", -1)] = *con.ConnectionString //Strip spaces from connection string. 
+			secrets[strings.Replace(*con.Description, " ", "", -1)] = *con.ConnectionString //Strip spaces from connection string.
 		}
 	}
 
