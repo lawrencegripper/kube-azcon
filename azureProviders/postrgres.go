@@ -36,7 +36,7 @@ type postgresConfig struct {
 
 func newPostgresConfig(azConfig ARMConfig, azRes crd.AzureResource) postgresConfig {
 	config := postgresConfig{
-		ServerName:                 azConfig.ResourcePrefix + randFromSelection(8, lettersLower),
+		ServerName:                 azConfig.ResourcePrefix + azRes.Name,
 		Location:                   azRes.Spec.Location,
 		Tags:                       azRes.GenerateAzureTags(),
 		AdministratorLogin:         "azurePostgres",
