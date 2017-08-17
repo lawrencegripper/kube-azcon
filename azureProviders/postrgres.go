@@ -92,7 +92,7 @@ func deployPostgres(deployConfig postgresConfig, azConfig ARMConfig) (models.Out
 				Tier:     postgresql.Basic,
 				Size:     StringPointer("51200")}
 
-			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: serverPropertiesForCreate}
+			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: &serverPropertiesForCreate}
 			serverConfigCreate.Tags = &deployConfig.Tags
 			//detailsType := "Microsoft.DBforPostgreSQL/servers"
 			//serverConfg.Type = &detailsType

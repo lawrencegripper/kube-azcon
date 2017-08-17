@@ -224,7 +224,7 @@ type Server struct {
 // ServerForCreate is represents a server to be created.
 type ServerForCreate struct {
 	Sku        *Sku                      `json:"sku,omitempty"`
-	Properties ServerPropertiesForDefaultCreate `json:"properties,omitempty"`
+	Properties *ServerPropertiesForDefaultCreate `json:"properties,omitempty"`
 	Location   *string                   `json:"location,omitempty"`
 	Tags       *map[string]*string       `json:"tags,omitempty"`
 }
