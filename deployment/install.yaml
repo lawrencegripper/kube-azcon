@@ -3,8 +3,6 @@ kind: CustomResourceDefinition
 metadata:
   # name must match the spec fields below, and be in the form: <plural>.<group>
   name: azureresources.stable.gripdev.xyz
-  finalizers:
-  - finalizer.azureresources.stable.gripdev.xyz
 spec:
   # group name to use for REST API: /apis/<group>/<version>
   group: stable.gripdev.xyz

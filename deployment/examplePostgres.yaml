@@ -1,0 +1,7 @@
+apiVersion: "stable.gripdev.xyz/v1"
+kind: AzureResource
+metadata:
+  name: postgresqlkubeazcon
+spec:
+  resourceProvider: postgres
+  location: westeurope

@@ -56,15 +56,15 @@ func (client ServersClient) CreateOrUpdate(resourceGroupName string, serverName 
 				Chain: []validation.Constraint{{Target: "parameters.Sku.Capacity", Name: validation.Null, Rule: false,
 					Chain: []validation.Constraint{{Target: "parameters.Sku.Capacity", Name: validation.InclusiveMinimum, Rule: 0, Chain: nil}}},
 				}},
-				{Target: "parameters.Properties", Name: validation.Null, Rule: true,
-					Chain: []validation.Constraint{{Target: "parameters.Properties.StorageMB", Name: validation.Null, Rule: false,
-						Chain: []validation.Constraint{{Target: "parameters.Properties.StorageMB", Name: validation.InclusiveMinimum, Rule: 1024, Chain: nil}}},
-					}},
+				// {Target: "parameters.Properties", Name: validation.Null, Rule: true,
+				// 	Chain: []validation.Constraint{{Target: "parameters.Properties.StorageMB", Name: validation.Null, Rule: false,
+				// 		Chain: []validation.Constraint{{Target: "parameters.Properties.StorageMB", Name: validation.InclusiveMinimum, Rule: 1024, Chain: nil}}},
+				// 	}},
 				{Target: "parameters.Location", Name: validation.Null, Rule: true, Chain: nil}}}}); err != nil {
-		// errChan <- validation.NewErrorWithValidationError(err, "postgresql.ServersClient", "CreateOrUpdate")
-		// close(errChan)
-		// close(resultChan)
-		//return resultChan, errChan
+		errChan <- validation.NewErrorWithValidationError(err, "postgresql.ServersClient", "CreateOrUpdate")
+		close(errChan)
+		close(resultChan)
+		return resultChan, errChan
 	}
 
 	go func() {
@@ -83,8 +83,6 @@ func (client ServersClient) CreateOrUpdate(resourceGroupName string, serverName 
 			err = autorest.NewErrorWithError(err, "postgresql.ServersClient", "CreateOrUpdate", nil, "Failure preparing request")
 			return
 		}
-
-		
 
 		resp, err := client.CreateOrUpdateSender(req)
 		if err != nil {

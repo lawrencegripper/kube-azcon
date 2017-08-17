@@ -1,6 +1,7 @@
 package autorest
 
 import (
+	"github.com/golang/glog"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -320,6 +321,9 @@ func WithJSON(v interface{}) PrepareDecorator {
 			r, err := p.Prepare(r)
 			if err == nil {
 				b, err := json.Marshal(v)
+
+				glog.Info(string(b))
+
 				if err == nil {
 					r.ContentLength = int64(len(b))
 					r.Body = ioutil.NopCloser(bytes.NewReader(b))

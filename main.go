@@ -10,7 +10,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/lawrencegripper/kube-azureresources/azureProviders"
 	"github.com/lawrencegripper/kube-azureresources/crd"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -30,6 +29,8 @@ func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
+var providers map[string]azureProviders.Provider
+
 func init() {
 	// We log to stderr because glog will default to logging to a file.
 	// By setting this debugging is easier via `kubectl logs`
@@ -47,7 +48,12 @@ func main() {
 
 	exitChannel := make(chan int)
 
-	fmt.Println("hello world")
+	fmt.Println("Load providers")
+
+	providers = map[string]azureProviders.Provider{
+		"cosmos": azureProviders.CosmosProvider{},
+		"postgres": azureProviders.PostgresProvider{},
+	}
 
 	// When running as a pod in-cluster, a kubeconfig is not needed. Instead this will make use of the service account injected into the pod.
 	// However, allow the use of a local kubeconfig as this can make local development & testing easier.
@@ -69,15 +75,8 @@ func main() {
 
 	kubeClient = client
 
-	nodes, err := client.Nodes().List(meta_v1.ListOptions{})
-
 	if err != nil {
 		glog.Fatalf("Failed to retreive nodes: %v", err)
-	}
-
-	fmt.Println("Nodes:")
-	for index := 0; index < len(nodes.Items); index++ {
-		fmt.Println(nodes.Items[index].Name)
 	}
 
 	kubeCustomClient, _, _ = crd.NewRestClient(clientConfig)
@@ -109,81 +108,48 @@ func main() {
 }
 
 func resourceCreated(a interface{}) {
-	resource := a.(*crd.AzureResource)
-
-	switch resource.Spec.ResourceProvider {
-	case "postgres":
-		checkAndUpdatePostgres(*resource)
-	case "cosmos":
-		checkAndUpdateCosmos(*resource)
-	default:
-		glog.Error("Cannot progress resource of this type", resource)
-	}
+	resourceUpdated(nil, a)
 }
 
 func resourceDeleted(a interface{}) {
 	resource := a.(*crd.AzureResource)
 
-	fmt.Println("Item deleted")
+	
+
+	// .Println("Item deleted")
 	fmt.Printf("Name: %v \n", resource.Name)
 }
 
 func resourceUpdated(oldItem, newItem interface{}) {
-	resource := oldItem.(*crd.AzureResource)
-
+	resource := newItem.(*crd.AzureResource)
+	
 	fmt.Println("Item Updated")
 	fmt.Printf("Name: %v \n", resource.Name)
-
+	
 	if resource.Status.ProvisioningStatus == "Provisioned" {
 		//Todo: Handle and reconcile changes in both kube and azure to update resources.
 		return
 	}
-
-	switch resource.Spec.ResourceProvider {
-	case "postgres":
-		checkAndUpdatePostgres(*resource)
-	case "cosmos":
-		checkAndUpdateCosmos(*resource)
-	default:
-		glog.Error("Cannot progress resource of this type", resource)
-	}
-}
-
-func checkAndUpdatePostgres(resource crd.AzureResource) {
+	
 	azCon, err := azureProviders.GetAzureConfigFromEnv()
-
 	if err != nil {
-		glog.Fatal(err)
-	}
-
-	depCon := azureProviders.NewPostgresConfig(resource)
-
-	result, err := azureProviders.DeployPostgres(depCon, azCon)
-	if err != nil {
-		glog.Error("Failed to create resource")
 		glog.Error(err)
+		return
 	}
 
-	k := azureProviders.NewKubeMan(clientConfig)
-	k.Update(resource, result, err)
-}
-
-func checkAndUpdateCosmos(resource crd.AzureResource) {
-	azCon, err := azureProviders.GetAzureConfigFromEnv()
-
-	if err != nil {
-		glog.Fatal(err)
+	provider, exists := providers[resource.Spec.ResourceProvider]
+	if !exists {
+		glog.Error("Cannot progress resource of this type", resource)
+		return
 	}
 
-	depCon := azureProviders.NewCosmosConfig(azCon, resource)
+	output, err := provider.CreateOrUpdate(azCon, *resource)
 
-	result, err := azureProviders.DeployCosmos(depCon, azCon)
 	if err != nil {
-		glog.Error("Failed to create resource")
 		glog.Error(err)
 		return
 	}
 
 	k := azureProviders.NewKubeMan(clientConfig)
-	k.Update(resource, result, err)
+	k.Update(*resource, output, err)
 }

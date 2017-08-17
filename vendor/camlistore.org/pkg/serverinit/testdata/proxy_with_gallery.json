@@ -1,0 +1,23 @@
+{
+	"listen": ":3179",
+	"baseURL": "http://camli.net",
+	"https": false,
+	"auth": "userpass:camlistore:pass3179",
+	"blobPath": "/tmp/blobs",
+	"identity": "26F5ABDA",
+	"identitySecretRing": "/path/to/secring",
+	"kvIndexFile": "/path/to/indexkv.db",
+	"s3": "",
+	"publish": {
+		"/pics/": {
+			"listen": ":55432",
+			"backendURL": "http://192.168.0.2:55432/",
+			"apiHost": "http://192.168.0.2:3179/",
+			"camliRoot": "picsRoot",
+			"cacheRoot": "/tmp/blobs/cache",
+			"goTemplate": "gallery.html"
+		}
+	},
+	"replicateTo": [],
+	"shareHandlerPath": "/share/"
+}

@@ -8,7 +8,6 @@ import (
 	"github.com/lawrencegripper/kube-azureresources/models"
 
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/arm/postgresql"
@@ -17,7 +16,15 @@ import (
 	"github.com/golang/glog"
 )
 
-type PostgresConfig struct {
+type PostgresProvider struct { }
+
+func (p PostgresProvider) CreateOrUpdate(azConfig ARMConfig, azRes crd.AzureResource) (models.Output, error) {
+	deployConfig := newPostgresConfig(azConfig, azRes)
+	return deployPostgres(deployConfig, azConfig)
+}
+
+
+type postgresConfig struct {
 	ServerName                 string
 	Location                   string
 	AdministratorLogin         string
@@ -25,18 +32,20 @@ type PostgresConfig struct {
 	Tags                       map[string]*string
 }
 
-func NewPostgresConfig(azRes crd.AzureResource) PostgresConfig {
-	config := PostgresConfig{
-		ServerName:                 randFromSelection(12, lettersLower),
+
+
+func newPostgresConfig(azConfig ARMConfig, azRes crd.AzureResource) postgresConfig {
+	config := postgresConfig{
+		ServerName:                 azConfig.ResourcePrefix + randFromSelection(8, lettersLower),
 		Location:                   azRes.Spec.Location,
 		Tags:                       azRes.GenerateAzureTags(),
 		AdministratorLogin:         "azurePostgres",
-		AdministratorLoginPassword: randAlphaNumericSeq(24),
+		AdministratorLoginPassword: randAlphaNumericSeq(16),
 	}
 	return config
 }
 
-func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Output, error) {
+func deployPostgres(deployConfig postgresConfig, azConfig ARMConfig) (models.Output, error) {
 	var output models.Output
 
 	azConfig, err := GetAzureConfigFromEnv()
@@ -73,8 +82,6 @@ func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Out
 			serverPropertiesForCreate := postgresql.ServerPropertiesForDefaultCreate{
 				AdministratorLogin:         &deployConfig.AdministratorLogin,
 				AdministratorLoginPassword: &deployConfig.AdministratorLoginPassword,
-				CreateMode:                 "Default",
-				SslEnforcement:             "Enabled",
 				StorageMB:                  Int64Pointer(51200),
 				Version:                    postgresql.NineFullStopSix}
 
@@ -82,8 +89,9 @@ func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Out
 				Capacity: Int32Pointer(50),
 				Family:   StringPointer("SkuFamily"),
 				Name:     StringPointer("PGSQLB50"),
-				Tier:     "Basic",
+				Tier:     postgresql.Basic,
 				Size:     StringPointer("51200")}
+
 			serverConfigCreate := postgresql.ServerForCreate{Sku: &serverSku, Location: &deployConfig.Location, Properties: serverPropertiesForCreate}
 			serverConfigCreate.Tags = &deployConfig.Tags
 			//detailsType := "Microsoft.DBforPostgreSQL/servers"
@@ -104,7 +112,7 @@ func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Out
 				case res := <-resultChan:
 					server = res
 					glog.Info("Completed creation")
-				case <-time.After(time.Minute * 6):
+				case <-time.After(time.Minute * 12):
 					glog.Error("Timeout occured creating server")
 					return output, errors.New("Timout Occurred provisioning resource")
 				}
@@ -119,8 +127,6 @@ func DeployPostgres(deployConfig PostgresConfig, azConfig ARMConfig) (models.Out
 	}
 
 	glog.Info(server)
-
-	fmt.Print(server.Name)
 
 	output = models.Output{
 		Endpoint: *server.FullyQualifiedDomainName,

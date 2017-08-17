@@ -38,7 +38,14 @@ func NewKubeMan(config *rest.Config) KubeMan {
 	}
 }
 
-func (k *KubeMan) IsUptodate(azResource crd.AzureResource) (IsUptodate *bool, err error) {
+func (k *KubeMan) IsUptodate(azResource crd.AzureResource) (isUptodate *bool, err error) {
+
+	return nil, errors.New("Not implimented yet")
+}
+
+func (k *KubeMan) Delete(azResource crd.AzureResource) (succeeded *bool, err error) {
+
+	
 
 	return nil, errors.New("Not implimented yet")
 }
@@ -51,7 +58,6 @@ func (k *KubeMan) Update(azResource crd.AzureResource, serviceOutput models.Outp
 
 	} else {
 		k.updateCrd(azResource, serviceOutput)
-
 		k.addServiceAndSecrets(azResource, serviceOutput)
 	}
 }
@@ -107,7 +113,10 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 	srvRes, err := k.client.Services(azResource.Namespace).Create(&service)
 	//Hack: If we can't create it try and udpate it. 
 	if err != nil {
-		srvRes, err = k.client.Services(azResource.Namespace).Update(&service)
+		//Get existing service and update it with endpoint. 
+		srvCurrent, _ := k.client.Services(azResource.Namespace).Get(azResource.Name, metav1.GetOptions{})
+		srvCurrent.Spec.ExternalName = serviceOutput.Endpoint
+		srvRes, err = k.client.Services(azResource.Namespace).Update(srvCurrent)
 	}
 
 	if err != nil {
@@ -128,7 +137,9 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 	secretRes, err := k.client.Secrets(azResource.Namespace).Create(&secret)
 	//Hack: If we can't create it try and update it. 
 	if err != nil {
-		secretRes, err = k.client.Secrets(azResource.Namespace).Create(&secret)
+		currentSecret, _ := k.client.Secrets(azResource.Namespace).Get(azResource.Name, metav1.GetOptions{})
+		currentSecret.Data = serviceOutput.GetSecretMap()
+		secretRes, err = k.client.Secrets(azResource.Namespace).Update(currentSecret)
 	}
 
 	if err != nil {

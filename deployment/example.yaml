@@ -1,7 +1,0 @@
-apiVersion: "stable.gripdev.xyz/v1"
-kind: AzureResource
-metadata:
-  name: postgresql3
-spec:
-  resourceProvider: azurePostgres
-  location: westeurope

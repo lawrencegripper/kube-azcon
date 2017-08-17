@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+{{if $header := call .Header}}
+	<head>
+	<title>{{$header.Title}}</title>
+	{{range $css := $header.CSSFiles}}
+		<link rel='stylesheet' type='text/css' href='{{$css}}'>
+	{{end}}
+	<script>
+	var subjectBasePath =  {{$header.SubjectBasePath}};
+	var subject = {{$header.Subject}};
+	var publishedRoot = {{$header.PublishedRoot}};
+	var pathPrefix = {{$header.PathPrefix}};
+	var host = {{$header.Host}};
+	var camliViewIsOwner = {{$header.ViewerIsOwner}};
+	</script>
+	{{range $jsFile := $header.JSDeps}}
+	<script src="{{$jsFile}}"></script>
+	{{end}}
+	</head>
+	<body>
+	<h1 id='title'>{{$header.Title}}</h1>
+	{{if $file := call .File}}
+		<div id="fileitemcontainer"></div>
+		<script>RenderFile();</script>
+	{{else}}
+	{{if $membersData := call .Members}}
+		<div><a href='{{$membersData.SubjectPath}}/=z/{{html $membersData.ZipName | urlquery}}'>{{html $membersData.ZipName}}</a></div>
+		<div id="blobitemcontainer"><ul id="members"></ul></div>
+		<script>RenderMembers();</script>
+	{{end}}
+	{{end}}
+{{end}}
+</body>
+</html>

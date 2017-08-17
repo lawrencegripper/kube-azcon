@@ -16,15 +16,22 @@ import (
 	"github.com/golang/glog"
 )
 
-type CosmosConfig struct {
+type CosmosProvider struct {}
+
+type cosmosConfig struct {
 	AccountName string
 	Location    string
 	Tags        map[string]*string
 	KubeLink    string
 }
 
-func NewCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource) CosmosConfig {
-	config := CosmosConfig{
+func (p CosmosProvider) CreateOrUpdate(azConfig ARMConfig, azRes crd.AzureResource) (models.Output, error) {
+	deployConfig := newCosmosConfig(azConfig, azRes)
+	return deployCosmos(deployConfig, azConfig)
+}
+
+func newCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource) cosmosConfig {
+	config := cosmosConfig{
 		AccountName: azConfig.ResourcePrefix + azRes.Name,
 		Location:    azRes.Spec.Location,
 		Tags:        azRes.GenerateAzureTags(),
@@ -34,7 +41,7 @@ func NewCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource) CosmosConfig {
 	return config
 }
 
-func DeployCosmos(deployConfig CosmosConfig, azConfig ARMConfig) (models.Output, error) {
+func deployCosmos(deployConfig cosmosConfig, azConfig ARMConfig) (models.Output, error) {
 	var output models.Output
 
 	azConfig, err := GetAzureConfigFromEnv()
