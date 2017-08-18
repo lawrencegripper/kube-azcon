@@ -44,9 +44,6 @@ func (k *KubeMan) IsUptodate(azResource crd.AzureResource) (isUptodate *bool, er
 }
 
 func (k *KubeMan) Delete(azResource crd.AzureResource) (succeeded *bool, err error) {
-
-	
-
 	return nil, errors.New("Not implimented yet")
 }
 
@@ -77,6 +74,7 @@ func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.O
 	}
 
 	resource.Status.ProvisioningStatus = "Provisioned"
+	serviceOutput.Secrets = nil
 	resource.Status.Output = serviceOutput
 
 	// Investigate moving to patch command. Could concurrent read and update be overwritten currenctly?
@@ -110,13 +108,13 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 		},
 	}
 
-	srvRes, err := k.client.Services(azResource.Namespace).Create(&service)
+	_, err := k.client.Services(azResource.Namespace).Create(&service)
 	//Hack: If we can't create it try and udpate it. 
 	if err != nil {
 		//Get existing service and update it with endpoint. 
 		srvCurrent, _ := k.client.Services(azResource.Namespace).Get(azResource.Name, metav1.GetOptions{})
 		srvCurrent.Spec.ExternalName = serviceOutput.Endpoint
-		srvRes, err = k.client.Services(azResource.Namespace).Update(srvCurrent)
+		_, err = k.client.Services(azResource.Namespace).Update(srvCurrent)
 	}
 
 	if err != nil {
@@ -124,7 +122,6 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 		glog.Error(err)
 	} else {
 		glog.Info("Created Service")
-		glog.Info(srvRes)
 	}
 
 	secret := v1.Secret{
@@ -134,12 +131,12 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 		Data: serviceOutput.GetSecretMap(),
 	}
 
-	secretRes, err := k.client.Secrets(azResource.Namespace).Create(&secret)
+	_, err = k.client.Secrets(azResource.Namespace).Create(&secret)
 	//Hack: If we can't create it try and update it. 
 	if err != nil {
 		currentSecret, _ := k.client.Secrets(azResource.Namespace).Get(azResource.Name, metav1.GetOptions{})
 		currentSecret.Data = serviceOutput.GetSecretMap()
-		secretRes, err = k.client.Secrets(azResource.Namespace).Update(currentSecret)
+		_, err = k.client.Secrets(azResource.Namespace).Update(currentSecret)
 	}
 
 	if err != nil {
@@ -147,8 +144,6 @@ func (k *KubeMan) addServiceAndSecrets(azResource crd.AzureResource, serviceOutp
 		glog.Error(err)
 	} else {
 		glog.Info("Created secret")
-		glog.Info(secretRes)
-
 	}
 
 }

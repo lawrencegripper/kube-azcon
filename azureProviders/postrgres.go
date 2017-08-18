@@ -1,6 +1,7 @@
 package azureProviders
 
 import (
+	"strings"
 	"net/http"
 
 	"github.com/lawrencegripper/kube-azureresources/crd"
@@ -36,7 +37,7 @@ type postgresConfig struct {
 
 func newPostgresConfig(azConfig ARMConfig, azRes crd.AzureResource) postgresConfig {
 	config := postgresConfig{
-		ServerName:                 azConfig.ResourcePrefix + azRes.Name,
+		ServerName:                 strings.ToLower(azConfig.ResourcePrefix + azRes.Name),
 		Location:                   azRes.Spec.Location,
 		Tags:                       azRes.GenerateAzureTags(),
 		AdministratorLogin:         "azurePostgres",
@@ -124,9 +125,10 @@ func deployPostgres(deployConfig postgresConfig, azConfig ARMConfig) (models.Out
 			glog.Error("Credentials supplied aren't valid or able to perform action", err)
 			panic("UnauthorizedError")
 		}
+	} else {
+		glog.Info("Server already exists")
 	}
-
-	glog.Info(server)
+	
 
 	output = models.Output{
 		Endpoint: *server.FullyQualifiedDomainName,
@@ -134,6 +136,8 @@ func deployPostgres(deployConfig postgresConfig, azConfig ARMConfig) (models.Out
 		Secrets: map[string]string{
 			"username": deployConfig.AdministratorLogin + "@" + deployConfig.ServerName,
 			"password": deployConfig.AdministratorLoginPassword,
+			"endpoint": *server.FullyQualifiedDomainName,
+			"port":     "5432",
 		},
 		AzureResourceIds: []string{*server.ID},
 	}

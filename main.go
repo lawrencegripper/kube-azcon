@@ -48,7 +48,7 @@ func main() {
 
 	exitChannel := make(chan int)
 
-	fmt.Println("Load providers")
+	glog.Info("Load providers")
 
 	providers = map[string]azureProviders.Provider{
 		"cosmos": azureProviders.CosmosProvider{},
@@ -81,8 +81,9 @@ func main() {
 
 	kubeCustomClient, _, _ = crd.NewRestClient(clientConfig)
 
+	//Todo: pull out sync interval into config
 	azureResourceWatch := cache.NewListWatchFromClient(kubeCustomClient, "azureresources", api.NamespaceAll, fields.Everything())
-	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, time.Second*0, cache.ResourceEventHandlerFuncs{
+	eStore, eController := cache.NewInformer(azureResourceWatch, &crd.AzureResource{}, time.Minute * 8, cache.ResourceEventHandlerFuncs{
 		AddFunc:    resourceCreated,
 		DeleteFunc: resourceDeleted,
 		UpdateFunc: resourceUpdated,
@@ -97,11 +98,7 @@ func main() {
 	}
 
 	resources := eStore.List()
-	for index := 0; index < len(resources); index++ {
-		obj := resources[index]
-		resource := obj.(*crd.AzureResource)
-		fmt.Println(resource.Name)
-	}
+	glog.Info("Resources at startup: ", resources)
 
 	exitCode := <-exitChannel
 	os.Exit(exitCode)
@@ -113,9 +110,6 @@ func resourceCreated(a interface{}) {
 
 func resourceDeleted(a interface{}) {
 	resource := a.(*crd.AzureResource)
-
-	
-
 	// .Println("Item deleted")
 	fmt.Printf("Name: %v \n", resource.Name)
 }
@@ -123,13 +117,8 @@ func resourceDeleted(a interface{}) {
 func resourceUpdated(oldItem, newItem interface{}) {
 	resource := newItem.(*crd.AzureResource)
 	
-	fmt.Println("Item Updated")
-	fmt.Printf("Name: %v \n", resource.Name)
-	
-	if resource.Status.ProvisioningStatus == "Provisioned" {
-		//Todo: Handle and reconcile changes in both kube and azure to update resources.
-		return
-	}
+	glog.Info("Item Updated")
+	glog.Infof("Name: %v \n", resource.Name)
 	
 	azCon, err := azureProviders.GetAzureConfigFromEnv()
 	if err != nil {

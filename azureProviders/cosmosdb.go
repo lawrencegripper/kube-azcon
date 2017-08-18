@@ -32,7 +32,7 @@ func (p CosmosProvider) CreateOrUpdate(azConfig ARMConfig, azRes crd.AzureResour
 
 func newCosmosConfig(azConfig ARMConfig, azRes crd.AzureResource) cosmosConfig {
 	config := cosmosConfig{
-		AccountName: azConfig.ResourcePrefix + azRes.Name,
+		AccountName: strings.ToLower(azConfig.ResourcePrefix + azRes.Name),
 		Location:    azRes.Spec.Location,
 		Tags:        azRes.GenerateAzureTags(),
 		KubeLink:    azRes.SelfLink,
