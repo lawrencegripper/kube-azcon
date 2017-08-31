@@ -4,9 +4,9 @@ import (
 	"strings"
 	"net/http"
 
-	"github.com/lawrencegripper/kube-azureresources/crd"
+	"github.com/lawrencegripper/kube-azcon/crd"
 
-	"github.com/lawrencegripper/kube-azureresources/models"
+	"github.com/lawrencegripper/kube-azcon/models"
 
 	"errors"
 	"time"
@@ -113,6 +113,7 @@ func deployPostgres(deployConfig postgresConfig, azConfig ARMConfig) (models.Out
 				case res := <-resultChan:
 					server = res
 					glog.Info("Completed creation")
+					break
 				case <-time.After(time.Minute * 12):
 					glog.Error("Timeout occured creating server")
 					return output, errors.New("Timout Occurred provisioning resource")

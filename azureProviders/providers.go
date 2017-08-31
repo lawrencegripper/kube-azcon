@@ -1,8 +1,8 @@
 package azureProviders
 
 import (
-	"github.com/lawrencegripper/kube-azureresources/models"
-	"github.com/lawrencegripper/kube-azureresources/crd"
+	"github.com/lawrencegripper/kube-azcon/models"
+	"github.com/lawrencegripper/kube-azcon/crd"
 )
 
 type Provider interface {

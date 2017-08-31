@@ -27,7 +27,7 @@ func NewServicePrincipalTokenFromCredentials(c ARMConfig, scope string) (*adal.S
 var lettersLower = []rune("abcdefghijklmnopqrstuvwxyz")
 var lettersUpper = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var numbers = []rune("1234567890")
-var symbols = []rune("!@£%$£^&*_+")
+var symbols = []rune("!@£%$£^*_+")
 
 func randAlphaNumericSeq(n int) string {
 	bucketSize := n / 4

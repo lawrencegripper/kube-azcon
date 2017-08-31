@@ -1,7 +1,7 @@
 package crd
 
 import (
-	"github.com/lawrencegripper/kube-azureresources/models"
+	"github.com/lawrencegripper/kube-azcon/models"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"encoding/json"
 	"time"

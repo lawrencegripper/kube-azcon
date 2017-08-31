@@ -224,7 +224,7 @@ type Server struct {
 // ServerForCreate is represents a server to be created.
 type ServerForCreate struct {
 	Sku        *Sku                      `json:"sku,omitempty"`
-	Properties *ServerPropertiesForDefaultCreate `json:"properties,omitempty"`
+	Properties ServerPropertiesForCreate `json:"properties,omitempty"`
 	Location   *string                   `json:"location,omitempty"`
 	Tags       *map[string]*string       `json:"tags,omitempty"`
 }
@@ -247,14 +247,14 @@ func (sfc *ServerForCreate) UnmarshalJSON(b []byte) error {
 		sfc.Sku = &sku
 	}
 
-	// v = m["properties"]
-	// if v != nil {
-	// 	p, err := unmarshalServerPropertiesForCreate(*m["properties"])
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	sfc.Properties = p
-	// }
+	v = m["properties"]
+	if v != nil {
+		p, err := unmarshalServerPropertiesForCreate(*m["properties"])
+		if err != nil {
+			return err
+		}
+		sfc.Properties = p
+	}
 
 	v = m["location"]
 	if v != nil {

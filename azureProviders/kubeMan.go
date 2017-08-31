@@ -8,8 +8,8 @@ import (
 
 	"reflect"
 
-	"github.com/lawrencegripper/kube-azureresources/crd"
-	"github.com/lawrencegripper/kube-azureresources/models"
+	"github.com/lawrencegripper/kube-azcon/crd"
+	"github.com/lawrencegripper/kube-azcon/models"
 	"k8s.io/client-go/dynamic"
 
 	"github.com/golang/glog"
@@ -83,13 +83,12 @@ func (k *KubeMan) updateCrd(azResource crd.AzureResource, serviceOutput models.O
 	//Only update if status has changed.
 	if !reflect.DeepEqual(resource.Status, azResource.Status) {
 
-		updateRes, err := k.resourceClient.Update(resToUpdate)
+		_, err := k.resourceClient.Update(resToUpdate)
 		if err != nil {
 			glog.Error("Failed to update resource")
 			glog.Error(err)
 		} else {
 			glog.Info("Updated azure resource")
-			glog.Info(updateRes)
 		}
 	}
 

@@ -3,9 +3,9 @@ package azureProviders
 import (
 	"strings"
 
-	"github.com/lawrencegripper/kube-azureresources/crd"
+	"github.com/lawrencegripper/kube-azcon/crd"
 
-	"github.com/lawrencegripper/kube-azureresources/models"
+	"github.com/lawrencegripper/kube-azcon/models"
 
 	"errors"
 	"time"

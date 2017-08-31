@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/lawrencegripper/kube-azureresources/azureProviders"
-	"github.com/lawrencegripper/kube-azureresources/crd"
+	"github.com/lawrencegripper/kube-azcon/azureProviders"
+	"github.com/lawrencegripper/kube-azcon/crd"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"

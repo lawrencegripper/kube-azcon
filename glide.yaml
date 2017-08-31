@@ -1,4 +1,4 @@
-package: github.com/lawrencegripper/kube-azureresources # e.g. github.com/foo/bar
+package: github.com/lawrencegripper/kube-azcon # e.g. github.com/foo/bar
 import:
 - package: k8s.io/client-go
   version: v3.0.0-beta.0

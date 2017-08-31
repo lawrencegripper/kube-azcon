@@ -320,7 +320,6 @@ func WithJSON(v interface{}) PrepareDecorator {
 			r, err := p.Prepare(r)
 			if err == nil {
 				b, err := json.Marshal(v)
-
 				if err == nil {
 					r.ContentLength = int64(len(b))
 					r.Body = ioutil.NopCloser(bytes.NewReader(b))
