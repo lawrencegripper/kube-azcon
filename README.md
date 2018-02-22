@@ -1,7 +1,11 @@
+*ABANDONED* May still be of use to understand working with CRDs from Go in Kubernetes
+
+To provision and control Azure services from Kubernetes see the [Open Service Broker](https://azure.microsoft.com/en-us/blog/connect-your-applications-to-azure-with-open-service-broker-for-azure/)
+
+
+
 Introduction
 ===========
-
-*WARNING* This is a spike/work in-progress
 
 When a service requires, for example, MSSQL, Postgres, BlobStorage or Redis they can be requested from Azure through the kubernetes toolchain.
 
